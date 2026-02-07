@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════════
+  TUSCARORA CLUB RESERVATION SYSTEM - QUICK DEPLOYMENT
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Create GitHub Repository
+─────────────────────────────────
+→ Go to: https://github.com/new
+→ Name: tuscarora-reservations
+→ Public repository
+→ Don't initialize with anything
+→ Click "Create repository"
+
+
+STEP 2: Push Your Code (replace YOUR-USERNAME)
+───────────────────────────────────────────────
+cd /path/to/TuscaroraReservations/tuscarora-reservations
+
+git branch -M main
+git remote add origin https://github.com/YOUR-USERNAME/tuscarora-reservations.git
+git push -u origin main
+
+
+STEP 3: Enable GitHub Pages
+────────────────────────────
+→ Go to your repository on GitHub
+→ Settings → Pages (left sidebar)
+→ Source: Branch "main", Folder "/ (root)"
+→ Click Save
+→ Wait 1-2 minutes
+
+
+STEP 4: Visit Your Site!
+─────────────────────────
+https://YOUR-USERNAME.github.io/tuscarora-reservations/
+
+
+═══════════════════════════════════════════════════════════════
+
+DEMO ACCOUNTS:
+  Members: member1, member2, member3
+  Admin: admin
+
+UPDATING YOUR SITE:
+  git add .
+  git commit -m "Your changes"
+  git push
+
+═══════════════════════════════════════════════════════════════
