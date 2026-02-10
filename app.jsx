@@ -1703,6 +1703,105 @@ const AdminInventoryView = ({
   );
 };
 
+// Reporting View
+const ReportingView = ({ bookings }) => {
+  // Get all dates with meals from today forward
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const mealCountsByDate = {};
+
+  bookings.forEach(booking => {
+    if (booking.dailyMeals) {
+      Object.keys(booking.dailyMeals).forEach(dateStr => {
+        const bookingDate = new Date(dateStr);
+        if (bookingDate >= today) {
+          if (!mealCountsByDate[dateStr]) {
+            mealCountsByDate[dateStr] = {
+              breakfast: 0,
+              packedBreakfast: 0,
+              lunch: 0,
+              packedLunch: 0,
+              barSupper: 0
+            };
+          }
+
+          const meals = booking.dailyMeals[dateStr];
+          if (meals.breakfast) mealCountsByDate[dateStr].breakfast++;
+          if (meals.packedBreakfast) mealCountsByDate[dateStr].packedBreakfast++;
+          if (meals.lunch) mealCountsByDate[dateStr].lunch++;
+          if (meals.packedLunch) mealCountsByDate[dateStr].packedLunch++;
+          if (meals.barSupper) mealCountsByDate[dateStr].barSupper++;
+        }
+      });
+    }
+  });
+
+  // Sort dates chronologically
+  const sortedDates = Object.keys(mealCountsByDate).sort((a, b) => new Date(a) - new Date(b));
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-light text-stone-800">Meal Count Report</h2>
+      <p className="text-sm text-stone-600">Showing all future bookings from today forward</p>
+
+      {sortedDates.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-stone-500">No meal bookings found</div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {sortedDates.map(dateStr => {
+            const date = new Date(dateStr);
+            const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+            const formattedDate = date.toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+            });
+            const counts = mealCountsByDate[dateStr];
+
+            return (
+              <div key={dateStr} className="border border-stone-200 rounded-lg p-6 bg-white">
+                <h3 className="text-lg font-semibold text-stone-900 mb-4">
+                  {dayOfWeek}, {formattedDate}
+                </h3>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between py-2 border-b border-stone-100">
+                    <span className="text-stone-700 font-medium">Breakfast:</span>
+                    <span className="text-stone-900">
+                      {counts.breakfast}
+                      {counts.packedBreakfast > 0 && (
+                        <span className="text-amber-600 ml-2">({counts.packedBreakfast} packed)</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2 border-b border-stone-100">
+                    <span className="text-stone-700 font-medium">Lunch:</span>
+                    <span className="text-stone-900">
+                      {counts.lunch}
+                      {counts.packedLunch > 0 && (
+                        <span className="text-amber-600 ml-2">({counts.packedLunch} packed)</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-stone-700 font-medium">Dinner (Bar Supper):</span>
+                    <span className="text-stone-900">{counts.barSupper}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Messages View
 const MessagesView = ({ messages, currentUser }) => {
   const userMessages = messages.filter(m => m.recipient === currentUser);
@@ -1771,6 +1870,7 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
               <span className="text-stone-400 text-xs">v4.1</span>
+              <span className="text-amber-300 text-sm ml-2">({currentUser})</span>
             </div>
           </div>
 
@@ -1800,6 +1900,15 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             >
               <LucideIcon name="mail" className="w-5 h-5" />
               <span>Messages</span>
+            </button>
+
+            <button
+              onClick={() => setView('reporting')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${view === 'reporting' ? 'bg-emerald-800 text-amber-200' : 'text-stone-200 hover:text-white'
+                }`}
+            >
+              <LucideIcon name="bar-chart" className="w-5 h-5" />
+              <span>Reporting</span>
             </button>
 
             {currentUser === 'admin' && (
@@ -2321,6 +2430,9 @@ function ClubReservationSystem() {
         {view === 'messages' && <MessagesView
           messages={messages}
           currentUser={currentUser}
+        />}
+        {view === 'reporting' && <ReportingView
+          bookings={bookings}
         />}
       </div>
 
