@@ -180,7 +180,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
           </div>
           <h1 className="text-3xl font-light text-emerald-900" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
           <p className="text-amber-700 mt-2 font-light">Member Portal</p>
-          <p className="text-stone-400 text-xs mt-1">v3.14</p>
+          <p className="text-stone-400 text-xs mt-1">v4.0</p>
         </div>
 
         <div className="space-y-4">
@@ -375,10 +375,13 @@ const CalendarView = ({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <div className="min-w-[1200px]">
-            {/* Gantt Header */}
-            <div className="grid grid-cols-[150px_repeat(21,1fr)] bg-stone-200">
-              <div className="bg-stone-50 p-2 text-sm font-medium text-stone-600 border-r border-stone-300">Room</div>
+          <div className="min-w-[1200px] border border-stone-300 rounded-lg overflow-hidden">
+            {/* Single Grid Container for perfect alignment */}
+            <div className="grid" style={{ gridTemplateColumns: '150px repeat(21, minmax(0, 1fr))' }}>
+              {/* Header Row */}
+              <div className="bg-stone-50 p-2 text-sm font-medium text-stone-600 border-r border-b border-stone-300 sticky left-0 z-10">
+                Room
+              </div>
               {threeWeeks.map((day, idx) => {
                 const dateStr = formatDate(day);
                 const isToday = formatDate(new Date()) === dateStr;
@@ -390,8 +393,8 @@ const CalendarView = ({
 
                 return (
                   <div
-                    key={idx}
-                    className={`p-2 text-center text-[10px] border-r border-stone-300
+                    key={`header-${idx}`}
+                    className={`p-2 text-center text-[10px] border-r border-b border-stone-300
                       ${isToday ? 'bg-emerald-600 text-white' : isWeekend ? 'bg-amber-50 text-stone-900' : 'bg-stone-50 text-stone-600'}
                       ${isMon ? 'border-l-2 border-stone-400' : ''}`}
                   >
@@ -400,13 +403,11 @@ const CalendarView = ({
                   </div>
                 );
               })}
-            </div>
 
-            {/* Gantt Body */}
-            <div className="border-t border-stone-300">
+              {/* Body Rows */}
               {getAllRooms(inventory).map(room => (
-                <div key={room.id} className="grid grid-cols-[150px_repeat(21,1fr)] border-b border-stone-200">
-                  <div className="bg-white p-2 text-xs font-medium text-stone-800 truncate border-r border-stone-300">
+                <React.Fragment key={room.id}>
+                  <div className="bg-white p-2 text-xs font-medium text-stone-800 truncate border-r border-b border-stone-200 sticky left-0 z-10">
                     {room.name}
                   </div>
                   {threeWeeks.map((day, idx) => {
@@ -424,22 +425,20 @@ const CalendarView = ({
                     const isSelected = selectedCells.some(cell => cell.roomId === room.id && cell.date === dateStr);
 
                     const handleCellClick = () => {
-                      if (booking) return; // Can't select booked cells
+                      if (booking) return;
 
                       if (isSelected) {
-                        // Deselect
                         setSelectedCells(selectedCells.filter(cell => !(cell.roomId === room.id && cell.date === dateStr)));
                       } else {
-                        // Select
                         setSelectedCells([...selectedCells, { roomId: room.id, date: dateStr }]);
                       }
                     };
 
                     return (
                       <div
-                        key={idx}
+                        key={`${room.id}-${idx}`}
                         onClick={handleCellClick}
-                        className={`h-12 transition-colors cursor-pointer flex items-center justify-center p-0.5 border-r border-stone-200
+                        className={`h-12 transition-colors cursor-pointer flex items-center justify-center p-0.5 border-r border-b border-stone-200
                           ${booking ? 'bg-emerald-100 cursor-not-allowed' : isSelected ? 'bg-blue-500 hover:bg-blue-600' : isWeekend ? 'bg-amber-50/30 hover:bg-emerald-50' : 'bg-white hover:bg-emerald-50'}
                           ${isMon ? 'border-l-2 border-stone-400' : ''}`}
                       >
@@ -454,7 +453,7 @@ const CalendarView = ({
                       </div>
                     );
                   })}
-                </div>
+                </React.Fragment>
               ))}
             </div>
           </div>
@@ -1652,7 +1651,7 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             </div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
-              <span className="text-stone-400 text-xs">v3.14</span>
+              <span className="text-stone-400 text-xs">v4.0</span>
             </div>
           </div>
 
