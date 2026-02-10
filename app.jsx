@@ -24,6 +24,7 @@ const SettingsIcon = (props) => <LucideIcon name="settings" {...props} />;
 const LogOutIcon = (props) => <LucideIcon name="log-out" {...props} />;
 const ChevronLeftIcon = (props) => <LucideIcon name="chevron-left" {...props} />;
 const ChevronRightIcon = (props) => <LucideIcon name="chevron-right" {...props} />;
+const ChevronDownIcon = (props) => <LucideIcon name="chevron-down" {...props} />;
 const AlertCircleIcon = (props) => <LucideIcon name="alert-circle" {...props} />;
 const CheckIcon = (props) => <LucideIcon name="check" {...props} />;
 const XIcon = (props) => <LucideIcon name="x" {...props} />;
@@ -180,7 +181,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
           </div>
           <h1 className="text-3xl font-light text-emerald-900" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
           <p className="text-amber-700 mt-2 font-light">Member Portal</p>
-          <p className="text-stone-400 text-xs mt-1">v4.1</p>
+          <p className="text-stone-400 text-xs mt-1">v4.2</p>
         </div>
 
         <div className="space-y-4">
@@ -1923,7 +1924,7 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             </div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
-              <span className="text-stone-400 text-xs">v4.1</span>
+              <span className="text-stone-400 text-xs">v4.2</span>
               <span className="text-amber-300 text-sm ml-2">({currentUser})</span>
             </div>
           </div>
