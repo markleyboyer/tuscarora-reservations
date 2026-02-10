@@ -377,16 +377,23 @@ const CalendarView = ({
         <div className="overflow-x-auto">
           <div className="min-w-[1200px]">
             {/* Gantt Header */}
-            <div className="grid grid-cols-[150px_repeat(21,1fr)] gap-px bg-stone-200 border-b border-stone-200">
-              <div className="bg-stone-50 p-2 text-sm font-medium text-stone-600">Room</div>
+            <div className="grid grid-cols-[150px_repeat(21,1fr)] bg-stone-200">
+              <div className="bg-stone-50 p-2 text-sm font-medium text-stone-600 border-r border-stone-300">Room</div>
               {threeWeeks.map((day, idx) => {
                 const dateStr = formatDate(day);
                 const isToday = formatDate(new Date()) === dateStr;
-                const isSun = day.getDay() === 0;
+                const dayOfWeek = day.getDay();
+                const isSat = dayOfWeek === 6;
+                const isSun = dayOfWeek === 0;
+                const isMon = dayOfWeek === 1;
+                const isWeekend = isSat || isSun;
+
                 return (
                   <div
                     key={idx}
-                    className={`p-2 text-center text-[10px] ${isToday ? 'bg-emerald-600 text-white' : isSun ? 'bg-stone-100 text-stone-900 border-l-2 border-stone-300' : 'bg-stone-50 text-stone-600'}`}
+                    className={`p-2 text-center text-[10px] border-r border-stone-300
+                      ${isToday ? 'bg-emerald-600 text-white' : isWeekend ? 'bg-amber-50 text-stone-900' : 'bg-stone-50 text-stone-600'}
+                      ${isMon ? 'border-l-2 border-stone-400' : ''}`}
                   >
                     <div className="font-bold">{day.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                     <div>{day.getDate()}</div>
@@ -396,10 +403,10 @@ const CalendarView = ({
             </div>
 
             {/* Gantt Body */}
-            <div className="divide-y divide-stone-200 border-b border-stone-200">
+            <div className="border-t border-stone-300">
               {getAllRooms(inventory).map(room => (
-                <div key={room.id} className="grid grid-cols-[150px_repeat(21,1fr)] gap-px bg-stone-200">
-                  <div className="bg-white p-2 text-xs font-medium text-stone-800 truncate border-r border-stone-200">
+                <div key={room.id} className="grid grid-cols-[150px_repeat(21,1fr)] border-b border-stone-200">
+                  <div className="bg-white p-2 text-xs font-medium text-stone-800 truncate border-r border-stone-300">
                     {room.name}
                   </div>
                   {threeWeeks.map((day, idx) => {
@@ -409,7 +416,11 @@ const CalendarView = ({
                       dateStr >= b.startDate &&
                       dateStr < b.endDate
                     );
-                    const isSun = day.getDay() === 0;
+                    const dayOfWeek = day.getDay();
+                    const isSat = dayOfWeek === 6;
+                    const isSun = dayOfWeek === 0;
+                    const isMon = dayOfWeek === 1;
+                    const isWeekend = isSat || isSun;
                     const isSelected = selectedCells.some(cell => cell.roomId === room.id && cell.date === dateStr);
 
                     const handleCellClick = () => {
@@ -428,9 +439,9 @@ const CalendarView = ({
                       <div
                         key={idx}
                         onClick={handleCellClick}
-                        className={`h-12 border-stone-100 transition-colors cursor-pointer flex items-center justify-center p-0.5
-                          ${booking ? 'bg-emerald-100 cursor-not-allowed' : isSelected ? 'bg-blue-500 hover:bg-blue-600' : 'bg-white hover:bg-emerald-50'}
-                          ${isSun ? 'border-l-2 border-stone-200' : ''}`}
+                        className={`h-12 transition-colors cursor-pointer flex items-center justify-center p-0.5 border-r border-stone-200
+                          ${booking ? 'bg-emerald-100 cursor-not-allowed' : isSelected ? 'bg-blue-500 hover:bg-blue-600' : isWeekend ? 'bg-amber-50/30 hover:bg-emerald-50' : 'bg-white hover:bg-emerald-50'}
+                          ${isMon ? 'border-l-2 border-stone-400' : ''}`}
                       >
                         {booking ? (
                           <div className="w-full h-full bg-emerald-700 text-white rounded text-[9px] flex flex-col items-center justify-center px-1 truncate font-medium shadow-sm leading-tight">
@@ -1260,62 +1271,108 @@ const MultiRoomBookingDetails = ({
             {/* Meals by Day */}
             <div>
               <h4 className="text-sm font-medium text-stone-700 mb-3">Meals</h4>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {booking.dates.map((date, dayIndex) => {
                   const dayData = booking.dailyMeals[date];
                   const isFirstDay = dayIndex === 0;
                   const isLastDay = dayIndex === booking.dates.length - 1;
                   const dateObj = new Date(date);
                   const dayOfWeek = dateObj.getDay();
-                  const showNoMeals = (dayOfWeek === 0 || dayOfWeek === 1 || dayOfWeek === 2);
+                  const showNoMeals = dayOfWeek === 1;
 
                   return (
-                    <div key={date} className="border border-stone-200 rounded p-3 bg-stone-50">
-                      <div className="font-medium text-sm text-stone-800 mb-2">
-                        {dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        {showNoMeals && dayOfWeek === 1 && (
-                          <span className="ml-2 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded">No meals served</span>
+                    <div key={date} className="grid grid-cols-[140px_1fr] gap-4 border border-stone-200 rounded p-3 bg-stone-50">
+                      {/* Date column */}
+                      <div className="flex flex-col justify-center">
+                        <div className="font-medium text-sm text-stone-800">
+                          {dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </div>
+                        {showNoMeals && (
+                          <div className="text-xs text-amber-700 mt-1">No meals served</div>
                         )}
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
+
+                      {/* Meals column - stacked vertically */}
+                      <div className="space-y-1">
                         {/* Breakfast */}
                         {!isFirstDay && (
-                          <label className={`flex items-center gap-2 ${!isMealAvailable(date, 'breakfast') ? 'opacity-40' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={dayData.breakfast}
-                              disabled={!isMealAvailable(date, 'breakfast')}
-                              onChange={(e) => updateMeal(roomIndex, date, 'breakfast', e.target.checked)}
-                              className="w-4 h-4"
-                            />
-                            <span>Breakfast</span>
-                          </label>
+                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'breakfast') ? 'opacity-40' : ''}`}>
+                            <label className="flex items-center gap-2 text-xs">
+                              <input
+                                type="checkbox"
+                                checked={dayData.breakfast}
+                                disabled={!isMealAvailable(date, 'breakfast')}
+                                onChange={(e) => updateMeal(roomIndex, date, 'breakfast', e.target.checked)}
+                                className="w-4 h-4"
+                              />
+                              <span className="font-medium">Breakfast</span>
+                            </label>
+                            {dayData.breakfast && (
+                              <label className="flex items-center gap-1 text-xs text-stone-600">
+                                <input
+                                  type="checkbox"
+                                  checked={dayData.packedBreakfast}
+                                  onChange={(e) => updateMeal(roomIndex, date, 'packedBreakfast', e.target.checked)}
+                                  className="w-3 h-3"
+                                />
+                                <span>Packed</span>
+                              </label>
+                            )}
+                          </div>
                         )}
+
                         {/* Lunch */}
                         {(isFirstDay || !isLastDay || booking.dates.length > 1) && (
-                          <label className={`flex items-center gap-2 ${!isMealAvailable(date, 'lunch') ? 'opacity-40' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={dayData.lunch}
-                              disabled={!isMealAvailable(date, 'lunch')}
-                              onChange={(e) => updateMeal(roomIndex, date, 'lunch', e.target.checked)}
-                              className="w-4 h-4"
-                            />
-                            <span>Lunch</span>
-                          </label>
+                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'lunch') ? 'opacity-40' : ''}`}>
+                            <label className="flex items-center gap-2 text-xs">
+                              <input
+                                type="checkbox"
+                                checked={dayData.lunch}
+                                disabled={!isMealAvailable(date, 'lunch')}
+                                onChange={(e) => updateMeal(roomIndex, date, 'lunch', e.target.checked)}
+                                className="w-4 h-4"
+                              />
+                              <span className="font-medium">Lunch</span>
+                            </label>
+                            {dayData.lunch && (
+                              <label className="flex items-center gap-1 text-xs text-stone-600">
+                                <input
+                                  type="checkbox"
+                                  checked={dayData.packedLunch}
+                                  onChange={(e) => updateMeal(roomIndex, date, 'packedLunch', e.target.checked)}
+                                  className="w-3 h-3"
+                                />
+                                <span>Packed</span>
+                              </label>
+                            )}
+                          </div>
                         )}
+
                         {/* Bar Supper */}
                         {!isLastDay && (
-                          <label className={`flex items-center gap-2 ${!isMealAvailable(date, 'barSupper') ? 'opacity-40' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={dayData.barSupper}
-                              disabled={!isMealAvailable(date, 'barSupper')}
-                              onChange={(e) => updateMeal(roomIndex, date, 'barSupper', e.target.checked)}
-                              className="w-4 h-4"
-                            />
-                            <span>Bar Supper</span>
-                          </label>
+                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'barSupper') ? 'opacity-40' : ''}`}>
+                            <label className="flex items-center gap-2 text-xs">
+                              <input
+                                type="checkbox"
+                                checked={dayData.barSupper}
+                                disabled={!isMealAvailable(date, 'barSupper')}
+                                onChange={(e) => updateMeal(roomIndex, date, 'barSupper', e.target.checked)}
+                                className="w-4 h-4"
+                              />
+                              <span className="font-medium">Bar Supper</span>
+                            </label>
+                            {dayData.barSupper && (
+                              <label className="flex items-center gap-1 text-xs text-stone-600">
+                                <input
+                                  type="checkbox"
+                                  checked={dayData.packedBarSupper}
+                                  onChange={(e) => updateMeal(roomIndex, date, 'packedBarSupper', e.target.checked)}
+                                  className="w-3 h-3"
+                                />
+                                <span>Packed</span>
+                              </label>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1426,7 +1483,7 @@ const MyReservationsView = ({ bookings, currentUser, getRoomById, cancelBooking,
                           return (
                             <div key={date} className="text-xs">
                               <div className="font-medium text-stone-700 mb-1">
-                                {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                               </div>
                               <div className="flex flex-wrap gap-1">
                                 {meals.breakfast && (
