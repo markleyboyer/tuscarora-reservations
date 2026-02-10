@@ -192,7 +192,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
               onChange={(e) => setUsername(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
               className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
-              placeholder="member1, member2, member3, or admin"
+              placeholder="Chris, Markley, David, Rob, Kerry, or admin"
             />
           </div>
 
@@ -205,7 +205,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
 
           <div className="mt-6 p-4 bg-emerald-50 rounded-lg">
             <p className="text-xs text-emerald-800 font-medium mb-2">Demo Accounts:</p>
-            <p className="text-xs text-stone-600">member1, member2, member3, admin</p>
+            <p className="text-xs text-stone-600">Chris, Markley, David, Rob, Kerry, admin</p>
           </div>
         </div>
       </div>
@@ -1983,7 +1983,7 @@ function ClubReservationSystem() {
   };
 
   const handleLogin = () => {
-    const validUsers = ['admin', 'member1', 'member2', 'member3', 'member4', 'member5', 'member6', 'member7', 'member8', 'member9', 'member10'];
+    const validUsers = ['admin', 'Chris', 'Markley', 'David', 'Rob', 'Kerry'];
     if (validUsers.includes(loginUsername)) {
       setCurrentUser(loginUsername);
       setView('calendar');
