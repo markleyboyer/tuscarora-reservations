@@ -1705,45 +1705,120 @@ const AdminInventoryView = ({
 
 // Reporting View
 const ReportingView = ({ bookings }) => {
+  const [expandedMeals, setExpandedMeals] = React.useState({});
+
   // Get all dates with meals from today forward
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const mealCountsByDate = {};
+  const mealDataByDate = {};
 
   bookings.forEach(booking => {
     if (booking.dailyMeals) {
       Object.keys(booking.dailyMeals).forEach(dateStr => {
         const bookingDate = new Date(dateStr);
         if (bookingDate >= today) {
-          if (!mealCountsByDate[dateStr]) {
-            mealCountsByDate[dateStr] = {
-              breakfast: 0,
-              packedBreakfast: 0,
-              lunch: 0,
-              packedLunch: 0,
-              barSupper: 0
+          if (!mealDataByDate[dateStr]) {
+            mealDataByDate[dateStr] = {
+              breakfast: [],
+              packedBreakfast: [],
+              lunch: [],
+              packedLunch: [],
+              barSupper: []
             };
           }
 
           const meals = booking.dailyMeals[dateStr];
-          if (meals.breakfast) mealCountsByDate[dateStr].breakfast++;
-          if (meals.packedBreakfast) mealCountsByDate[dateStr].packedBreakfast++;
-          if (meals.lunch) mealCountsByDate[dateStr].lunch++;
-          if (meals.packedLunch) mealCountsByDate[dateStr].packedLunch++;
-          if (meals.barSupper) mealCountsByDate[dateStr].barSupper++;
+          if (meals.breakfast) mealDataByDate[dateStr].breakfast.push(booking.member);
+          if (meals.packedBreakfast) mealDataByDate[dateStr].packedBreakfast.push(booking.member);
+          if (meals.lunch) mealDataByDate[dateStr].lunch.push(booking.member);
+          if (meals.packedLunch) mealDataByDate[dateStr].packedLunch.push(booking.member);
+          if (meals.barSupper) mealDataByDate[dateStr].barSupper.push(booking.member);
         }
       });
     }
   });
 
   // Sort dates chronologically
-  const sortedDates = Object.keys(mealCountsByDate).sort((a, b) => new Date(a) - new Date(b));
+  const sortedDates = Object.keys(mealDataByDate).sort((a, b) => new Date(a) - new Date(b));
+
+  const toggleMeal = (dateStr, mealType) => {
+    const key = `${dateStr}-${mealType}`;
+    setExpandedMeals(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const renderMealRow = (dateStr, mealType, label, members, packedMembers = []) => {
+    const key = `${dateStr}-${mealType}`;
+    const isExpanded = expandedMeals[key];
+    const totalCount = members.length;
+    const packedCount = packedMembers.length;
+    const hasMembers = totalCount > 0 || packedCount > 0;
+
+    return (
+      <div className="py-2 border-b border-stone-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {hasMembers && (
+              <button
+                onClick={() => toggleMeal(dateStr, mealType)}
+                className="p-1 hover:bg-stone-100 rounded transition-colors"
+              >
+                {isExpanded ? (
+                  <ChevronDownIcon className="w-4 h-4 text-stone-600" />
+                ) : (
+                  <ChevronRightIcon className="w-4 h-4 text-stone-600" />
+                )}
+              </button>
+            )}
+            <span className="text-stone-700 font-medium">{label}:</span>
+          </div>
+          <span className="text-stone-900">
+            {totalCount}
+            {packedCount > 0 && (
+              <span className="text-amber-600 ml-2">({packedCount} packed)</span>
+            )}
+          </span>
+        </div>
+
+        {isExpanded && hasMembers && (
+          <div className="mt-2 ml-8 space-y-1">
+            {members.length > 0 && (
+              <div>
+                <div className="text-xs text-stone-500 mb-1">Regular:</div>
+                <div className="flex flex-wrap gap-2">
+                  {members.map((member, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-emerald-50 text-emerald-800 text-sm rounded">
+                      {member}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {packedMembers.length > 0 && (
+              <div className="mt-2">
+                <div className="text-xs text-stone-500 mb-1">Packed:</div>
+                <div className="flex flex-wrap gap-2">
+                  {packedMembers.map((member, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-amber-50 text-amber-800 text-sm rounded">
+                      {member}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-light text-stone-800">Meal Count Report</h2>
-      <p className="text-sm text-stone-600">Showing all future bookings from today forward</p>
+      <p className="text-sm text-stone-600">Showing all future bookings from today forward. Click arrows to see member names.</p>
 
       {sortedDates.length === 0 ? (
         <div className="text-center py-12">
@@ -1759,7 +1834,7 @@ const ReportingView = ({ bookings }) => {
               day: 'numeric',
               year: 'numeric'
             });
-            const counts = mealCountsByDate[dateStr];
+            const data = mealDataByDate[dateStr];
 
             return (
               <div key={dateStr} className="border border-stone-200 rounded-lg p-6 bg-white">
@@ -1768,30 +1843,9 @@ const ReportingView = ({ bookings }) => {
                 </h3>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between py-2 border-b border-stone-100">
-                    <span className="text-stone-700 font-medium">Breakfast:</span>
-                    <span className="text-stone-900">
-                      {counts.breakfast}
-                      {counts.packedBreakfast > 0 && (
-                        <span className="text-amber-600 ml-2">({counts.packedBreakfast} packed)</span>
-                      )}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2 border-b border-stone-100">
-                    <span className="text-stone-700 font-medium">Lunch:</span>
-                    <span className="text-stone-900">
-                      {counts.lunch}
-                      {counts.packedLunch > 0 && (
-                        <span className="text-amber-600 ml-2">({counts.packedLunch} packed)</span>
-                      )}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-stone-700 font-medium">Dinner (Bar Supper):</span>
-                    <span className="text-stone-900">{counts.barSupper}</span>
-                  </div>
+                  {renderMealRow(dateStr, 'breakfast', 'Breakfast', data.breakfast, data.packedBreakfast)}
+                  {renderMealRow(dateStr, 'lunch', 'Lunch', data.lunch, data.packedLunch)}
+                  {renderMealRow(dateStr, 'dinner', 'Dinner (Bar Supper)', data.barSupper)}
                 </div>
               </div>
             );
@@ -2011,7 +2065,10 @@ function ClubReservationSystem() {
     { "id": "b27", "member": "Chris", "building": "Lazy Lodge", "roomId": "ll1", "roomName": "Lazy Lodge #1", "startDate": "2026-02-08", "endDate": "2026-02-12", "guests": 2, "isGuest": true, "dailyMeals": { "2026-02-08": { "breakfast": false, "lunch": false, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-09": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-10": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": true }, "2026-02-11": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-12": { "breakfast": true, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "15:00", "guestArrival": "15:00", "provisional": false },
 
     { "id": "b28", "member": "David", "building": "Lazy Lodge", "roomId": "ll2", "roomName": "Lazy Lodge #2", "startDate": "2026-02-02", "endDate": "2026-02-05", "guests": 1, "isGuest": false, "dailyMeals": { "2026-02-02": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-03": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-04": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-05": { "breakfast": true, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "18:00", "guestArrival": "18:00", "provisional": false },
-    { "id": "b29", "member": "Kerry", "building": "Lazy Lodge", "roomId": "ll2", "roomName": "Lazy Lodge #2", "startDate": "2026-02-09", "endDate": "2026-02-13", "guests": 4, "isGuest": true, "dailyMeals": { "2026-02-09": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-10": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-11": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-12": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": true, "packedLunch": true }, "2026-02-13": { "breakfast": true, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "12:00", "guestArrival": "12:00", "provisional": false }
+    { "id": "b29", "member": "Kerry", "building": "Lazy Lodge", "roomId": "ll2", "roomName": "Lazy Lodge #2", "startDate": "2026-02-09", "endDate": "2026-02-13", "guests": 4, "isGuest": true, "dailyMeals": { "2026-02-09": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-10": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-11": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-12": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": true, "packedLunch": true }, "2026-02-13": { "breakfast": true, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "12:00", "guestArrival": "12:00", "provisional": false },
+
+    // Provisional booking - Markley trying to book Lazy Lodge again (he already used it Feb 1-5)
+    { "id": "b30", "member": "Markley", "building": "Lazy Lodge", "roomId": "ll1", "roomName": "Lazy Lodge #1", "startDate": "2026-02-15", "endDate": "2026-02-18", "guests": 2, "isGuest": false, "dailyMeals": { "2026-02-15": { "breakfast": false, "lunch": false, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-16": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-17": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "16:00", "guestArrival": "16:00", "provisional": true }
   ]);
   const [lazyLodgeHistory, setLazyLodgeHistory] = useState({
     2026: ['Markley']
