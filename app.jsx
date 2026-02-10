@@ -1120,10 +1120,12 @@ const MultiRoomBookingDetails = ({
     const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
     // No meals between Sunday lunch and Tuesday breakfast inclusive
-    // Sunday dinner (barSupper): not available (dayOfWeek === 0, meal !== lunch/breakfast)
+    // Sunday lunch: not available
+    // Sunday dinner (barSupper): not available
     // Monday all meals: not available (dayOfWeek === 1)
     // Tuesday breakfast: not available (dayOfWeek === 2, meal === breakfast)
 
+    if (dayOfWeek === 0 && mealType === 'lunch') return false; // Sunday lunch
     if (dayOfWeek === 0 && mealType === 'barSupper') return false; // Sunday dinner
     if (dayOfWeek === 1) return false; // Monday - all meals
     if (dayOfWeek === 2 && mealType === 'breakfast') return false; // Tuesday breakfast
@@ -1219,12 +1221,44 @@ const MultiRoomBookingDetails = ({
           <label className="block text-sm font-medium text-stone-700 mb-2">
             Arrival Time (for entire party)
           </label>
-          <input
-            type="time"
+          <select
             value={partyArrivalTime}
             onChange={(e) => setPartyArrivalTime(e.target.value)}
-            className="px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600"
-          />
+            className="px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600 bg-white"
+          >
+            <option value="">Select arrival time...</option>
+            <option value="07:00">7:00 AM</option>
+            <option value="07:30">7:30 AM</option>
+            <option value="08:00">8:00 AM</option>
+            <option value="08:30">8:30 AM</option>
+            <option value="09:00">9:00 AM</option>
+            <option value="09:30">9:30 AM</option>
+            <option value="10:00">10:00 AM</option>
+            <option value="10:30">10:30 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="11:30">11:30 AM</option>
+            <option value="12:00">12:00 PM</option>
+            <option value="12:30">12:30 PM</option>
+            <option value="13:00">1:00 PM</option>
+            <option value="13:30">1:30 PM</option>
+            <option value="14:00">2:00 PM</option>
+            <option value="14:30">2:30 PM</option>
+            <option value="15:00">3:00 PM</option>
+            <option value="15:30">3:30 PM</option>
+            <option value="16:00">4:00 PM</option>
+            <option value="16:30">4:30 PM</option>
+            <option value="17:00">5:00 PM</option>
+            <option value="17:30">5:30 PM</option>
+            <option value="18:00">6:00 PM</option>
+            <option value="18:30">6:30 PM</option>
+            <option value="19:00">7:00 PM</option>
+            <option value="19:30">7:30 PM</option>
+            <option value="20:00">8:00 PM</option>
+            <option value="20:30">8:30 PM</option>
+            <option value="21:00">9:00 PM</option>
+            <option value="21:30">9:30 PM</option>
+            <option value="22:00">10:00 PM</option>
+          </select>
         </div>
       </div>
 
@@ -1295,7 +1329,7 @@ const MultiRoomBookingDetails = ({
                       <div className="space-y-1">
                         {/* Breakfast */}
                         {!isFirstDay && (
-                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'breakfast') ? 'opacity-40' : ''}`}>
+                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'breakfast') ? 'opacity-60' : ''}`}>
                             <label className="flex items-center gap-2 text-xs">
                               <input
                                 type="checkbox"
@@ -1304,7 +1338,9 @@ const MultiRoomBookingDetails = ({
                                 onChange={(e) => updateMeal(roomIndex, date, 'breakfast', e.target.checked)}
                                 className="w-4 h-4"
                               />
-                              <span className="font-medium">Breakfast</span>
+                              <span className={`font-medium ${!isMealAvailable(date, 'breakfast') ? 'line-through' : ''}`}>
+                                Breakfast
+                              </span>
                             </label>
                             {dayData.breakfast && (
                               <label className="flex items-center gap-1 text-xs text-stone-600">
@@ -1322,7 +1358,7 @@ const MultiRoomBookingDetails = ({
 
                         {/* Lunch */}
                         {(isFirstDay || !isLastDay || booking.dates.length > 1) && (
-                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'lunch') ? 'opacity-40' : ''}`}>
+                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'lunch') ? 'opacity-60' : ''}`}>
                             <label className="flex items-center gap-2 text-xs">
                               <input
                                 type="checkbox"
@@ -1331,7 +1367,9 @@ const MultiRoomBookingDetails = ({
                                 onChange={(e) => updateMeal(roomIndex, date, 'lunch', e.target.checked)}
                                 className="w-4 h-4"
                               />
-                              <span className="font-medium">Lunch</span>
+                              <span className={`font-medium ${!isMealAvailable(date, 'lunch') ? 'line-through' : ''}`}>
+                                Lunch
+                              </span>
                             </label>
                             {dayData.lunch && (
                               <label className="flex items-center gap-1 text-xs text-stone-600">
@@ -1349,7 +1387,7 @@ const MultiRoomBookingDetails = ({
 
                         {/* Bar Supper */}
                         {!isLastDay && (
-                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'barSupper') ? 'opacity-40' : ''}`}>
+                          <div className={`flex items-center justify-between ${!isMealAvailable(date, 'barSupper') ? 'opacity-60' : ''}`}>
                             <label className="flex items-center gap-2 text-xs">
                               <input
                                 type="checkbox"
@@ -1358,7 +1396,9 @@ const MultiRoomBookingDetails = ({
                                 onChange={(e) => updateMeal(roomIndex, date, 'barSupper', e.target.checked)}
                                 className="w-4 h-4"
                               />
-                              <span className="font-medium">Bar Supper</span>
+                              <span className={`font-medium ${!isMealAvailable(date, 'barSupper') ? 'line-through' : ''}`}>
+                                Bar Supper
+                              </span>
                             </label>
                             {dayData.barSupper && (
                               <label className="flex items-center gap-1 text-xs text-stone-600">
