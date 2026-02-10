@@ -688,6 +688,56 @@ const BookingFlow = ({
   if (bookingStep === 3) {
     const room = getRoomById(newBooking.roomId);
 
+    // Generate array of dates for the stay
+    const getDatesInStay = () => {
+      const dates = [];
+      const start = new Date(newBooking.startDate);
+      const end = new Date(newBooking.endDate);
+      const current = new Date(start);
+
+      while (current < end) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    };
+
+    const stayDates = getDatesInStay();
+
+    // Initialize dailyMeals if empty
+    if (Object.keys(newBooking.dailyMeals).length === 0 && stayDates.length > 0) {
+      const initialDailyMeals = {};
+      stayDates.forEach(date => {
+        const dateStr = date.toISOString().split('T')[0];
+        initialDailyMeals[dateStr] = {
+          breakfast: false,
+          lunch: false,
+          barSupper: false,
+          packedBreakfast: false,
+          packedLunch: false,
+          packedBarSupper: false
+        };
+      });
+      setNewBooking({ ...newBooking, dailyMeals: initialDailyMeals });
+    }
+
+    const updateMeal = (dateStr, meal, value) => {
+      setNewBooking({
+        ...newBooking,
+        dailyMeals: {
+          ...newBooking.dailyMeals,
+          [dateStr]: {
+            ...newBooking.dailyMeals[dateStr],
+            [meal]: value,
+            // Reset packed option if meal is unchecked
+            ...((!value && meal === 'breakfast') ? { packedBreakfast: false } : {}),
+            ...((!value && meal === 'lunch') ? { packedLunch: false } : {}),
+            ...((!value && meal === 'barSupper') ? { packedBarSupper: false } : {})
+          }
+        }
+      });
+    };
+
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -733,47 +783,184 @@ const BookingFlow = ({
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-3">
-              Meals (for {newBooking.guests} guest{newBooking.guests > 1 ? 's' : ''})
+              Meals by Day (for {newBooking.guests} guest{newBooking.guests > 1 ? 's' : ''})
             </label>
-            <div className="space-y-3">
-              {Object.entries(mealTimesConfig).map(([meal, time]) => (
-                <div key={meal} className="flex items-center gap-3 p-3 border border-stone-200 rounded-lg bg-white">
-                  <input
-                    type="checkbox"
-                    checked={newBooking.meals[meal]}
-                    onChange={(e) => setNewBooking({
-                      ...newBooking,
-                      meals: { ...newBooking.meals, [meal]: e.target.checked },
-                      packedMeals: { ...newBooking.packedMeals, [meal]: e.target.checked ? newBooking.packedMeals[meal] : false }
-                    })}
-                    className="w-5 h-5 text-emerald-700 rounded border-stone-300"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-sm text-stone-800 capitalize">
-                      {meal === 'barSupper' ? 'Bar Supper' : meal}
-                    </div>
-                    <div className="text-xs text-stone-500">{time}</div>
-                  </div>
+            <div className="space-y-4">
+              {stayDates.map((date, dayIndex) => {
+                const dateStr = date.toISOString().split('T')[0];
+                const dayData = newBooking.dailyMeals[dateStr] || {};
+                const isFirstDay = dayIndex === 0;
+                const isLastDay = dayIndex === stayDates.length - 1;
 
-                  {newBooking.meals[meal] && (
-                    <label className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-md cursor-pointer hover:bg-emerald-100 transition-colors border border-emerald-100">
-                      <input
-                        type="checkbox"
-                        checked={newBooking.packedMeals[meal]}
-                        onChange={(e) => setNewBooking({
-                          ...newBooking,
-                          packedMeals: { ...newBooking.packedMeals, [meal]: e.target.checked }
-                        })}
-                        className="w-4 h-4 text-emerald-700 rounded border-emerald-300"
-                      />
-                      <span className="text-xs font-medium text-emerald-800">Packed to go?</span>
-                    </label>
-                  )}
-                </div>
-              ))}
+                return (
+                  <div key={dateStr} className="border border-stone-300 rounded-lg p-4 bg-white">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-emerald-900">
+                        Day {dayIndex + 1} - {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </h4>
+                      {isFirstDay && (
+                        <div className="flex gap-2 text-xs">
+                          <div className="flex items-center gap-1">
+                            <span className="text-stone-600">Arrival:</span>
+                            <span className="font-medium">{newBooking.memberArrival || 'Not set'}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      {/* Special handling for single-day stays */}
+                      {isFirstDay && isLastDay ? (
+                        <>
+                          <div className="text-xs text-stone-600 italic mb-2">
+                            Single day stay - Lunch and Bar Supper available
+                          </div>
+                          {/* Lunch for arrival day */}
+                          <div className="flex items-center gap-3 p-2 border border-stone-200 rounded bg-stone-50">
+                            <input
+                              type="checkbox"
+                              checked={dayData.lunch || false}
+                              onChange={(e) => updateMeal(dateStr, 'lunch', e.target.checked)}
+                              className="w-4 h-4 text-emerald-700 rounded border-stone-300"
+                            />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-stone-800">Lunch</div>
+                              <div className="text-xs text-stone-500">{mealTimesConfig.lunch}</div>
+                            </div>
+                            {dayData.lunch && (
+                              <label className="flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={dayData.packedLunch || false}
+                                  onChange={(e) => updateMeal(dateStr, 'packedLunch', e.target.checked)}
+                                  className="w-3 h-3 text-emerald-700 rounded"
+                                />
+                                <span className="text-xs text-emerald-800">Packed</span>
+                              </label>
+                            )}
+                          </div>
+                          {/* Bar Supper for arrival day */}
+                          <div className="flex items-center gap-3 p-2 border border-stone-200 rounded bg-stone-50">
+                            <input
+                              type="checkbox"
+                              checked={dayData.barSupper || false}
+                              onChange={(e) => updateMeal(dateStr, 'barSupper', e.target.checked)}
+                              className="w-4 h-4 text-emerald-700 rounded border-stone-300"
+                            />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-stone-800">Bar Supper</div>
+                              <div className="text-xs text-stone-500">{mealTimesConfig.barSupper}</div>
+                            </div>
+                            {dayData.barSupper && (
+                              <label className="flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={dayData.packedBarSupper || false}
+                                  onChange={(e) => updateMeal(dateStr, 'packedBarSupper', e.target.checked)}
+                                  className="w-3 h-3 text-emerald-700 rounded"
+                                />
+                                <span className="text-xs text-emerald-800">Packed</span>
+                              </label>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* Breakfast - Not on first day arrival, available on checkout */}
+                          {!isFirstDay && (
+                            <div className="flex items-center gap-3 p-2 border border-stone-200 rounded bg-stone-50">
+                              <input
+                                type="checkbox"
+                                checked={dayData.breakfast || false}
+                                onChange={(e) => updateMeal(dateStr, 'breakfast', e.target.checked)}
+                                className="w-4 h-4 text-emerald-700 rounded border-stone-300"
+                              />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-stone-800">Breakfast</div>
+                                <div className="text-xs text-stone-500">{mealTimesConfig.breakfast}</div>
+                              </div>
+                              {dayData.breakfast && (
+                                <label className="flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={dayData.packedBreakfast || false}
+                                    onChange={(e) => updateMeal(dateStr, 'packedBreakfast', e.target.checked)}
+                                    className="w-3 h-3 text-emerald-700 rounded"
+                                  />
+                                  <span className="text-xs text-emerald-800">Packed</span>
+                                </label>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Lunch - Available on arrival and full days, not on checkout */}
+                          {!isLastDay && (
+                            <div className="flex items-center gap-3 p-2 border border-stone-200 rounded bg-stone-50">
+                              <input
+                                type="checkbox"
+                                checked={dayData.lunch || false}
+                                onChange={(e) => updateMeal(dateStr, 'lunch', e.target.checked)}
+                                className="w-4 h-4 text-emerald-700 rounded border-stone-300"
+                              />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-stone-800">Lunch</div>
+                                <div className="text-xs text-stone-500">{mealTimesConfig.lunch}</div>
+                              </div>
+                              {dayData.lunch && (
+                                <label className="flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={dayData.packedLunch || false}
+                                    onChange={(e) => updateMeal(dateStr, 'packedLunch', e.target.checked)}
+                                    className="w-3 h-3 text-emerald-700 rounded"
+                                  />
+                                  <span className="text-xs text-emerald-800">Packed</span>
+                                </label>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Bar Supper - Available on arrival and full days, not on checkout */}
+                          {!isLastDay && (
+                            <div className="flex items-center gap-3 p-2 border border-stone-200 rounded bg-stone-50">
+                              <input
+                                type="checkbox"
+                                checked={dayData.barSupper || false}
+                                onChange={(e) => updateMeal(dateStr, 'barSupper', e.target.checked)}
+                                className="w-4 h-4 text-emerald-700 rounded border-stone-300"
+                              />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-stone-800">Bar Supper</div>
+                                <div className="text-xs text-stone-500">{mealTimesConfig.barSupper}</div>
+                              </div>
+                              {dayData.barSupper && (
+                                <label className="flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={dayData.packedBarSupper || false}
+                                    onChange={(e) => updateMeal(dateStr, 'packedBarSupper', e.target.checked)}
+                                    className="w-3 h-3 text-emerald-700 rounded"
+                                  />
+                                  <span className="text-xs text-emerald-800">Packed</span>
+                                </label>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Checkout day message */}
+                          {isLastDay && !isFirstDay && (
+                            <div className="text-xs text-stone-600 italic mt-2">
+                              Checkout day - Breakfast only available
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-
         </div>
 
         <div className="flex justify-end gap-3">
@@ -862,9 +1049,47 @@ const MyReservationsView = ({ bookings, currentUser, getRoomById, cancelBooking,
                   </div>
                 </div>
 
-                {(booking.meals.breakfast || booking.meals.lunch || booking.meals.barSupper) && (
+                {/* Display meals - supports both old format (meals object) and new format (dailyMeals) */}
+                {booking.dailyMeals ? (
+                  Object.keys(booking.dailyMeals).length > 0 && (
+                    <div>
+                      <div className="text-sm text-stone-600 mb-2">Meals by Day:</div>
+                      <div className="space-y-2">
+                        {Object.entries(booking.dailyMeals).map(([date, meals]) => {
+                          const hasMeals = meals.breakfast || meals.lunch || meals.barSupper;
+                          if (!hasMeals) return null;
+
+                          return (
+                            <div key={date} className="text-xs">
+                              <div className="font-medium text-stone-700 mb-1">
+                                {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {meals.breakfast && (
+                                  <span className="px-2 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-100">
+                                    Breakfast {meals.packedBreakfast ? '(Packed)' : ''}
+                                  </span>
+                                )}
+                                {meals.lunch && (
+                                  <span className="px-2 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-100">
+                                    Lunch {meals.packedLunch ? '(Packed)' : ''}
+                                  </span>
+                                )}
+                                {meals.barSupper && (
+                                  <span className="px-2 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-100">
+                                    Bar Supper {meals.packedBarSupper ? '(Packed)' : ''}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )
+                ) : (booking.meals && (booking.meals.breakfast || booking.meals.lunch || booking.meals.barSupper)) ? (
                   <div>
-                    <div className="text-sm text-stone-600 mb-2">Meals:</div>
+                    <div className="text-sm text-stone-600 mb-2">Meals (legacy format):</div>
                     <div className="flex flex-wrap gap-2">
                       {booking.meals.breakfast && (
                         <span className="px-2 py-1 bg-emerald-50 text-emerald-800 text-xs rounded border border-emerald-100">
@@ -883,7 +1108,7 @@ const MyReservationsView = ({ bookings, currentUser, getRoomById, cancelBooking,
                       )}
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {booking.provisional && (
                   <div className="text-xs text-amber-700 bg-amber-50 p-3 rounded">
@@ -1135,8 +1360,7 @@ function ClubReservationSystem() {
     startDate: '',
     endDate: '',
     guests: 1,
-    meals: { breakfast: false, lunch: false, barSupper: false },
-    packedMeals: { breakfast: false, lunch: false, barSupper: false },
+    dailyMeals: {}, // Will be populated with dates as keys
     memberArrival: '',
     guestArrival: '',
     isGuestRoom: false
@@ -1265,8 +1489,7 @@ function ClubReservationSystem() {
       startDate: newBooking.startDate,
       endDate: newBooking.endDate,
       guests: newBooking.guests,
-      meals: newBooking.meals,
-      packedMeals: newBooking.packedMeals,
+      dailyMeals: newBooking.dailyMeals,
       memberArrival: newBooking.memberArrival,
       guestArrival: newBooking.guestArrival,
       isGuest: newBooking.isGuestRoom,
@@ -1291,8 +1514,7 @@ function ClubReservationSystem() {
       startDate: '',
       endDate: '',
       guests: 1,
-      meals: { breakfast: false, lunch: false, barSupper: false },
-      packedMeals: { breakfast: false, lunch: false, barSupper: false },
+      dailyMeals: {},
       memberArrival: '',
       guestArrival: '',
       isGuestRoom: false
