@@ -181,7 +181,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
           </div>
           <h1 className="text-3xl font-light text-emerald-900" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
           <p className="text-amber-700 mt-2 font-light">Member Portal</p>
-          <p className="text-stone-400 text-xs mt-1">v4.2</p>
+          <p className="text-stone-400 text-xs mt-1">v4.3</p>
         </div>
 
         <div className="space-y-4">
@@ -308,13 +308,13 @@ const CalendarView = ({
           </div>
 
           <div className="flex gap-2">
-            <button onClick={() => navigateCalendar(-1)} className="p-2 hover:bg-emerald-100 rounded text-emerald-800">
+            <button onClick={() => navigateCalendar(-1)} className="p-2 hover:bg-stone-100 rounded text-stone-600 hover:text-stone-800">
               <ChevronLeftIcon className="w-5 h-5" />
             </button>
-            <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1 hover:bg-emerald-100 rounded text-sm text-emerald-800">
+            <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1 hover:bg-stone-100 rounded text-sm text-stone-600 hover:text-stone-800">
               Today
             </button>
-            <button onClick={() => navigateCalendar(1)} className="p-2 hover:bg-emerald-100 rounded text-emerald-800">
+            <button onClick={() => navigateCalendar(1)} className="p-2 hover:bg-stone-100 rounded text-stone-600 hover:text-stone-800">
               <ChevronRightIcon className="w-5 h-5" />
             </button>
           </div>
@@ -1924,7 +1924,7 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             </div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
-              <span className="text-stone-400 text-xs">v4.2</span>
+              <span className="text-stone-400 text-xs">v4.3</span>
               <span className="text-amber-300 text-sm ml-2">({currentUser})</span>
             </div>
           </div>
