@@ -1673,6 +1673,55 @@ const AdminInventoryView = ({
   );
 };
 
+// Messages View
+const MessagesView = ({ messages, currentUser }) => {
+  const userMessages = messages.filter(m => m.recipient === currentUser);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-light text-stone-800">Messages</h2>
+
+      {userMessages.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-stone-500">No messages</div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {userMessages.map(message => (
+            <div
+              key={message.id}
+              className={`border rounded-lg p-6 space-y-3 ${message.read ? 'bg-white border-stone-200' : 'bg-amber-50 border-amber-200'}`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-lg text-stone-900">{message.subject}</h3>
+                  <p className="text-xs text-stone-500 mt-1">
+                    {new Date(message.timestamp).toLocaleString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                {!message.read && (
+                  <span className="px-2 py-1 bg-amber-500 text-white text-xs rounded font-medium">
+                    New
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-stone-700 whitespace-pre-line">
+                {message.body}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Main Navigation
 const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, onLogoutClick }) => {
   if (!currentUser) return null;
@@ -1712,6 +1761,15 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             >
               <UsersIcon className="w-5 h-5" />
               <span>My Reservations</span>
+            </button>
+
+            <button
+              onClick={() => setView('messages')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${view === 'messages' ? 'bg-emerald-800 text-amber-200' : 'text-stone-200 hover:text-white'
+                }`}
+            >
+              <LucideIcon name="mail" className="w-5 h-5" />
+              <span>Messages</span>
             </button>
 
             {currentUser === 'admin' && (
@@ -1804,6 +1862,7 @@ function ClubReservationSystem() {
   const [lazyLodgeHistory, setLazyLodgeHistory] = useState({
     2026: ['member2']
   });
+  const [messages, setMessages] = useState([]); // System messages for users
   const [maxRoomThreshold, setMaxRoomThreshold] = useState(5);
   const [mealTimes, setMealTimes] = useState(MEAL_TIMES);
 
@@ -2172,6 +2231,10 @@ function ClubReservationSystem() {
           mealTimes={mealTimes}
           setMealTimes={setMealTimes}
           inventory={inventory}
+        />}
+        {view === 'messages' && <MessagesView
+          messages={messages}
+          currentUser={currentUser}
         />}
       </div>
 
