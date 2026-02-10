@@ -226,7 +226,10 @@ const CalendarView = ({
   bookings,
   selectedCells,
   setSelectedCells,
-  setBookingMode
+  setBookingMode,
+  currentUser,
+  lazyLodgeHistory,
+  hasRentedLazyLodge
 }) => {
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -424,8 +427,17 @@ const CalendarView = ({
                     const isWeekend = isSat || isSun;
                     const isSelected = selectedCells.some(cell => cell.roomId === room.id && cell.date === dateStr);
 
+                    // Lazy Lodge logic
+                    const isLazyLodge = room.id === 'll1' || room.id === 'll2';
+                    const year = new Date(dateStr).getFullYear();
+                    const userHasUsedLL = hasRentedLazyLodge(currentUser, year);
+                    const showProvisionalIndicator = !booking && isLazyLodge && userHasUsedLL;
+                    const isProvisionalBooking = booking && booking.provisional;
+                    const canOverrideProvisional = isProvisionalBooking && isLazyLodge && !userHasUsedLL;
+
                     const handleCellClick = () => {
-                      if (booking) return;
+                      // Allow selecting if: no booking OR provisional booking that user can override
+                      if (booking && !canOverrideProvisional) return;
 
                       if (isSelected) {
                         setSelectedCells(selectedCells.filter(cell => !(cell.roomId === room.id && cell.date === dateStr)));
@@ -439,16 +451,30 @@ const CalendarView = ({
                         key={`${room.id}-${idx}`}
                         onClick={handleCellClick}
                         className={`h-12 transition-colors cursor-pointer flex items-center justify-center p-0.5 border-r border-b border-stone-200
-                          ${booking ? 'bg-emerald-100 cursor-not-allowed' : isSelected ? 'bg-blue-500 hover:bg-blue-600' : isWeekend ? 'bg-amber-50/30 hover:bg-emerald-50' : 'bg-white hover:bg-emerald-50'}
+                          ${booking && !canOverrideProvisional ? 'bg-emerald-100 cursor-not-allowed' :
+                            isProvisionalBooking ? 'bg-amber-100 hover:bg-amber-200' :
+                            isSelected ? 'bg-blue-500 hover:bg-blue-600' :
+                            isWeekend ? 'bg-amber-50/30 hover:bg-emerald-50' :
+                            'bg-white hover:bg-emerald-50'}
                           ${isMon ? 'border-l-2 border-stone-400' : ''}`}
                       >
-                        {booking ? (
-                          <div className="w-full h-full bg-emerald-700 text-white rounded text-[9px] flex flex-col items-center justify-center px-1 truncate font-medium shadow-sm leading-tight">
-                            <div className="truncate w-full text-center">{booking.member}</div>
-                            {booking.isGuest && <div className="opacity-80 font-normal">guest</div>}
+                        {booking && !canOverrideProvisional ? (
+                          <div className={`w-full h-full rounded text-[9px] flex flex-col items-center justify-center px-1 truncate font-medium shadow-sm leading-tight
+                            ${isProvisionalBooking ? 'bg-amber-600 text-white' : 'bg-emerald-700 text-white'}`}>
+                            <div className="truncate w-full text-center">
+                              {isProvisionalBooking ? 'Provisional' : booking.member}
+                            </div>
+                            {booking.isGuest && !isProvisionalBooking && <div className="opacity-80 font-normal">guest</div>}
+                          </div>
+                        ) : isProvisionalBooking && canOverrideProvisional ? (
+                          <div className="w-full h-full bg-amber-600 text-white rounded text-[9px] flex flex-col items-center justify-center px-1 truncate font-medium shadow-sm leading-tight">
+                            <div className="truncate w-full text-center">Provisional</div>
+                            <div className="text-[8px] opacity-90">(click to override)</div>
                           </div>
                         ) : isSelected ? (
                           <CheckIcon className="w-5 h-5 text-white" />
+                        ) : showProvisionalIndicator ? (
+                          <div className="text-3xl font-bold text-stone-400">P</div>
                         ) : null}
                       </div>
                     );
@@ -478,6 +504,10 @@ const CalendarView = ({
           <div className="flex items-center gap-2">
             <span className="text-red-700 text-[10px] font-bold">XX: name</span>
             <span>Booked</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-stone-400 text-3xl font-bold">P</span>
+            <span>Provisional (Lazy Lodge)</span>
           </div>
         </div>
 
@@ -2050,10 +2080,30 @@ function ClubReservationSystem() {
 
   const confirmMultiRoomBooking = (roomBookings, partyArrivalTime) => {
     const newBookings = [];
+    const bookingsToRemove = [];
+    const bumpedMembers = new Set();
 
     roomBookings.forEach(roomBooking => {
       const isProvisional = roomBooking.building === 'Lazy Lodge' &&
         hasRentedLazyLodge(currentUser, new Date(roomBooking.startDate).getFullYear());
+
+      // Check for provisional bookings in this room/date range
+      const startDate = new Date(roomBooking.startDate);
+      const endDate = new Date(roomBooking.endDate);
+
+      bookings.forEach(existingBooking => {
+        if (existingBooking.provisional &&
+            existingBooking.roomId === roomBooking.roomId) {
+          const existingStart = new Date(existingBooking.startDate);
+          const existingEnd = new Date(existingBooking.endDate);
+
+          // Check for date overlap
+          if (existingStart < endDate && existingEnd > startDate) {
+            bookingsToRemove.push(existingBooking.id);
+            bumpedMembers.add(existingBooking.member);
+          }
+        }
+      });
 
       const booking = {
         id: `b${bookings.length + newBookings.length + 1}`,
@@ -2074,7 +2124,7 @@ function ClubReservationSystem() {
 
       newBookings.push(booking);
 
-      // Track Lazy Lodge usage
+      // Track Lazy Lodge usage for non-provisional bookings
       if (roomBooking.building === 'Lazy Lodge' && !isProvisional) {
         const year = new Date(roomBooking.startDate).getFullYear();
         setLazyLodgeHistory({
@@ -2084,7 +2134,25 @@ function ClubReservationSystem() {
       }
     });
 
-    setBookings([...bookings, ...newBookings]);
+    // Remove provisional bookings that were bumped
+    const updatedBookings = bookings.filter(b => !bookingsToRemove.includes(b.id));
+
+    // Create messages for bumped members
+    const newMessages = [];
+    bumpedMembers.forEach(member => {
+      const message = {
+        id: `msg${messages.length + newMessages.length + 1}`,
+        recipient: member,
+        subject: 'Lazy Lodge Provisional Booking Bumped',
+        body: `Your provisional Lazy Lodge booking has been replaced by ${currentUser}, who has priority for Lazy Lodge this calendar year. Please make an alternative reservation.`,
+        timestamp: new Date().toISOString(),
+        read: false
+      };
+      newMessages.push(message);
+    });
+
+    setBookings([...updatedBookings, ...newBookings]);
+    setMessages([...messages, ...newMessages]);
     setBookingMode('calendar');
     setSelectedCells([]);
     setView('my-reservations');
@@ -2192,6 +2260,9 @@ function ClubReservationSystem() {
           selectedCells={selectedCells}
           setSelectedCells={setSelectedCells}
           setBookingMode={setBookingMode}
+          currentUser={currentUser}
+          lazyLodgeHistory={lazyLodgeHistory}
+          hasRentedLazyLodge={hasRentedLazyLodge}
         />}
         {view === 'calendar' && bookingMode === 'details' && <MultiRoomBookingDetails
           selectedCells={selectedCells}
