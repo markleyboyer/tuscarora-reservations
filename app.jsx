@@ -181,7 +181,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
           </div>
           <h1 className="text-3xl font-light text-emerald-900" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
           <p className="text-amber-700 mt-2 font-light">Member Portal</p>
-          <p className="text-stone-400 text-xs mt-1">v4.3</p>
+          <p className="text-stone-400 text-xs mt-1">v4.4</p>
         </div>
 
         <div className="space-y-4">
@@ -308,14 +308,14 @@ const CalendarView = ({
           </div>
 
           <div className="flex gap-2">
-            <button onClick={() => navigateCalendar(-1)} className="p-2 hover:bg-stone-100 rounded text-stone-600 hover:text-stone-800">
-              <ChevronLeftIcon className="w-5 h-5" />
+            <button onClick={() => navigateCalendar(-1)} className="px-3 py-2 bg-stone-200 hover:bg-stone-300 rounded text-stone-700 font-bold text-lg">
+              ←
             </button>
-            <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1 hover:bg-stone-100 rounded text-sm text-stone-600 hover:text-stone-800">
+            <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1 bg-stone-200 hover:bg-stone-300 rounded text-sm text-stone-700 font-medium">
               Today
             </button>
-            <button onClick={() => navigateCalendar(1)} className="p-2 hover:bg-stone-100 rounded text-stone-600 hover:text-stone-800">
-              <ChevronRightIcon className="w-5 h-5" />
+            <button onClick={() => navigateCalendar(1)} className="px-3 py-2 bg-stone-200 hover:bg-stone-300 rounded text-stone-700 font-bold text-lg">
+              →
             </button>
           </div>
         </div>
@@ -1730,11 +1730,39 @@ const ReportingView = ({ bookings }) => {
           }
 
           const meals = booking.dailyMeals[dateStr];
-          if (meals.breakfast) mealDataByDate[dateStr].breakfast.push(booking.member);
-          if (meals.packedBreakfast) mealDataByDate[dateStr].packedBreakfast.push(booking.member);
-          if (meals.lunch) mealDataByDate[dateStr].lunch.push(booking.member);
-          if (meals.packedLunch) mealDataByDate[dateStr].packedLunch.push(booking.member);
-          if (meals.barSupper) mealDataByDate[dateStr].barSupper.push(booking.member);
+          const guestCount = booking.guests || 1;
+
+          // Add member and their guests for each meal
+          if (meals.breakfast) {
+            mealDataByDate[dateStr].breakfast.push(booking.member);
+            for (let i = 1; i < guestCount; i++) {
+              mealDataByDate[dateStr].breakfast.push(`Guest of ${booking.member}`);
+            }
+          }
+          if (meals.packedBreakfast) {
+            mealDataByDate[dateStr].packedBreakfast.push(booking.member);
+            for (let i = 1; i < guestCount; i++) {
+              mealDataByDate[dateStr].packedBreakfast.push(`Guest of ${booking.member}`);
+            }
+          }
+          if (meals.lunch) {
+            mealDataByDate[dateStr].lunch.push(booking.member);
+            for (let i = 1; i < guestCount; i++) {
+              mealDataByDate[dateStr].lunch.push(`Guest of ${booking.member}`);
+            }
+          }
+          if (meals.packedLunch) {
+            mealDataByDate[dateStr].packedLunch.push(booking.member);
+            for (let i = 1; i < guestCount; i++) {
+              mealDataByDate[dateStr].packedLunch.push(`Guest of ${booking.member}`);
+            }
+          }
+          if (meals.barSupper) {
+            mealDataByDate[dateStr].barSupper.push(booking.member);
+            for (let i = 1; i < guestCount; i++) {
+              mealDataByDate[dateStr].barSupper.push(`Guest of ${booking.member}`);
+            }
+          }
         }
       });
     }
@@ -1924,7 +1952,7 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             </div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
-              <span className="text-stone-400 text-xs">v4.3</span>
+              <span className="text-stone-400 text-xs">v4.4</span>
               <span className="text-amber-300 text-sm ml-2">({currentUser})</span>
             </div>
           </div>
