@@ -182,7 +182,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
           </div>
           <h1 className="text-3xl font-light text-emerald-900" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
           <p className="text-amber-700 mt-2 font-light">Member Portal</p>
-          <p className="text-stone-400 text-xs mt-1">v4.9</p>
+          <p className="text-stone-400 text-xs mt-1">v5.1</p>
         </div>
 
         <div className="space-y-4">
@@ -1949,24 +1949,24 @@ const MyReservationsView = ({ bookings, currentUser, getRoomById, cancelBooking,
           {userBookings.map(booking => {
             const room = getRoomById(booking.roomId);
             return (
-              <div key={booking.id} className="border border-stone-200 rounded-lg p-6 space-y-4 bg-white shadow-sm">
+              <div key={booking.id} className="border border-stone-200 rounded-lg p-4 space-y-3 bg-white shadow-sm">
+                {/* Line 1: Room, Dates, and Action Buttons */}
                 <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-lg">{booking.building} - {booking.roomName}</h3>
-                      {booking.provisional && (
-                        <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded font-medium">
-                          Provisional
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-stone-600 mt-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-base">{booking.building} - {booking.roomName}</h3>
+                    {booking.provisional && (
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs rounded font-medium">
+                        Provisional
+                      </span>
+                    )}
+                    <span className="text-sm text-stone-600">•</span>
+                    <span className="text-sm text-stone-600">
                       {new Date(booking.startDate).toLocaleDateString('en-US', {
                         weekday: 'short', month: 'short', day: 'numeric'
                       })} - {new Date(booking.endDate).toLocaleDateString('en-US', {
                         weekday: 'short', month: 'short', day: 'numeric'
                       })}
-                    </p>
+                    </span>
                   </div>
                   <div className="flex gap-3">
                     <button
@@ -1990,84 +1990,75 @@ const MyReservationsView = ({ bookings, currentUser, getRoomById, cancelBooking,
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                {/* Line 2: Occupant, Guests, Arrival */}
+                <div className="flex gap-6 text-sm text-stone-600">
                   <div>
-                    <span className="text-stone-600">Occupant(s):</span>
-                    <span className="ml-2 font-medium">
+                    <span className="text-stone-500">Occupant:</span>
+                    <span className="ml-1.5 font-medium text-stone-800">
                       {booking.isGuest ? (booking.guestName || 'Guest') : booking.member}
-                      {booking.isGuest && <span className="ml-1 text-stone-400 text-xs">(guest room)</span>}
+                      {booking.isGuest && <span className="ml-1 text-stone-400 text-xs">(guest)</span>}
                     </span>
                   </div>
                   <div>
-                    <span className="text-stone-600">Guests:</span>
-                    <span className="ml-2 font-medium">{booking.guests}</span>
+                    <span className="text-stone-500">Guests:</span>
+                    <span className="ml-1.5 font-medium text-stone-800">{booking.guests}</span>
                   </div>
                   <div>
-                    <span className="text-stone-600">Arrival:</span>
-                    <span className="ml-2 font-medium">{booking.memberArrival}</span>
+                    <span className="text-stone-500">Arrival:</span>
+                    <span className="ml-1.5 font-medium text-stone-800">{booking.memberArrival}</span>
                   </div>
                 </div>
 
-                {/* Display meals - supports both old format (meals object) and new format (dailyMeals) */}
-                {booking.dailyMeals ? (
-                  Object.keys(booking.dailyMeals).length > 0 && (
-                    <div>
-                      <div className="text-sm text-stone-600 mb-2">Meals by Day:</div>
-                      <div className="space-y-2">
+                {/* Meals Table */}
+                {booking.dailyMeals && Object.keys(booking.dailyMeals).length > 0 && (
+                  <div className="text-xs">
+                    <table className="w-auto border-collapse">
+                      <thead>
+                        <tr className="text-stone-600">
+                          <th className="text-left font-bold pb-1 pr-4">Day</th>
+                          <th className="text-left font-bold pb-1 pr-4">Breakfast</th>
+                          <th className="text-left font-bold pb-1 pr-4">Lunch</th>
+                          <th className="text-left font-bold pb-1">Bar Supper</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-stone-700">
                         {Object.entries(booking.dailyMeals).map(([date, meals]) => {
                           const hasMeals = meals.breakfast || meals.lunch || meals.barSupper;
                           if (!hasMeals) return null;
 
                           return (
-                            <div key={date} className="text-xs">
-                              <div className="font-medium text-stone-700 mb-1">
+                            <tr key={date}>
+                              <td className="py-1 pr-4 font-medium">
                                 {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                              </div>
-                              <div className="flex flex-wrap gap-1">
+                              </td>
+                              <td className="py-1 pr-4">
                                 {meals.breakfast && (
-                                  <span className="px-2 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-100">
-                                    Breakfast {meals.packedBreakfast ? '(Packed)' : ''}
+                                  <span className="bg-amber-50 px-2 py-0.5 rounded text-emerald-700">
+                                    Breakfast{meals.packedBreakfast ? ' (Packed)' : ''}
                                   </span>
                                 )}
+                              </td>
+                              <td className="py-1 pr-4">
                                 {meals.lunch && (
-                                  <span className="px-2 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-100">
-                                    Lunch {meals.packedLunch ? '(Packed)' : ''}
+                                  <span className="bg-amber-50 px-2 py-0.5 rounded text-emerald-700">
+                                    Lunch{meals.packedLunch ? ' (Packed)' : ''}
                                   </span>
                                 )}
+                              </td>
+                              <td className="py-1">
                                 {meals.barSupper && (
-                                  <span className="px-2 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-100">
-                                    Bar Supper {meals.packedBarSupper ? '(Packed)' : ''}
+                                  <span className="bg-amber-50 px-2 py-0.5 rounded text-emerald-700">
+                                    Bar Supper{meals.packedBarSupper ? ' (Packed)' : ''}
                                   </span>
                                 )}
-                              </div>
-                            </div>
+                              </td>
+                            </tr>
                           );
                         })}
-                      </div>
-                    </div>
-                  )
-                ) : (booking.meals && (booking.meals.breakfast || booking.meals.lunch || booking.meals.barSupper)) ? (
-                  <div>
-                    <div className="text-sm text-stone-600 mb-2">Meals (legacy format):</div>
-                    <div className="flex flex-wrap gap-2">
-                      {booking.meals.breakfast && (
-                        <span className="px-2 py-1 bg-emerald-50 text-emerald-800 text-xs rounded border border-emerald-100">
-                          Breakfast {(booking.packedMeals && booking.packedMeals.breakfast) ? '(Packed)' : ''}
-                        </span>
-                      )}
-                      {booking.meals.lunch && (
-                        <span className="px-2 py-1 bg-emerald-50 text-emerald-800 text-xs rounded border border-emerald-100">
-                          Lunch {(booking.packedMeals && booking.packedMeals.lunch) ? '(Packed)' : ''}
-                        </span>
-                      )}
-                      {booking.meals.barSupper && (
-                        <span className="px-2 py-1 bg-emerald-50 text-emerald-800 text-xs rounded border border-emerald-100">
-                          Bar Supper {(booking.packedMeals && booking.packedMeals.barSupper) ? '(Packed)' : ''}
-                        </span>
-                      )}
-                    </div>
+                      </tbody>
+                    </table>
                   </div>
-                ) : null}
+                )}
 
                 {booking.provisional && (
                   <div className="text-xs text-amber-700 bg-amber-50 p-3 rounded">
@@ -2473,7 +2464,7 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             </div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
-              <span className="text-stone-400 text-xs">v4.9</span>
+              <span className="text-stone-400 text-xs">v5.1</span>
             </div>
           </div>
 
