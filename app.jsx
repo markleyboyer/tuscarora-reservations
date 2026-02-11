@@ -181,7 +181,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
           </div>
           <h1 className="text-3xl font-light text-emerald-900" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
           <p className="text-amber-700 mt-2 font-light">Member Portal</p>
-          <p className="text-stone-400 text-xs mt-1">v4.4</p>
+          <p className="text-stone-400 text-xs mt-1">v4.5</p>
         </div>
 
         <div className="space-y-4">
@@ -230,7 +230,8 @@ const CalendarView = ({
   setBookingMode,
   currentUser,
   lazyLodgeHistory,
-  hasRentedLazyLodge
+  hasRentedLazyLodge,
+  onEditBooking
 }) => {
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -361,11 +362,11 @@ const CalendarView = ({
                         dateStr < b.endDate
                       );
                       return (
-                        <div key={room.id} className={`truncate flex justify-between gap-1 ${booking ? 'text-red-700 font-medium' : 'text-stone-400'}`}>
+                        <div key={room.id} className={`truncate flex justify-between gap-1 ${booking ? (booking.member === currentUser ? 'text-blue-700 font-medium' : 'text-red-700 font-medium') : 'text-stone-400'}`}>
                           <span>{room.id.toUpperCase()}:</span>
                           <span className="truncate">
                             {booking ? (
-                              booking.isGuest ? `${booking.member} (G)` : booking.member
+                              booking.isGuest ? (booking.guestName || `${booking.member} (G)`) : booking.member
                             ) : '—'}
                           </span>
                         </div>
@@ -436,7 +437,14 @@ const CalendarView = ({
                     const isProvisionalBooking = booking && booking.provisional;
                     const canOverrideProvisional = isProvisionalBooking && isLazyLodge && !userHasUsedLL;
 
+                    const isOwnBooking = booking && !booking.provisional && (booking.member === currentUser || currentUser === 'admin');
+
                     const handleCellClick = () => {
+                      // If this is the current user's (or admin's) confirmed booking, open edit
+                      if (isOwnBooking) {
+                        onEditBooking(booking);
+                        return;
+                      }
                       // Allow selecting if: no booking OR provisional booking that user can override
                       if (booking && !canOverrideProvisional) return;
 
@@ -452,7 +460,7 @@ const CalendarView = ({
                         key={`${room.id}-${idx}`}
                         onClick={handleCellClick}
                         className={`h-12 transition-colors cursor-pointer flex items-center justify-center p-0.5 border-r border-b border-stone-200
-                          ${booking && !canOverrideProvisional ? 'bg-emerald-100 cursor-not-allowed' :
+                          ${booking && !canOverrideProvisional ? (isOwnBooking ? 'bg-blue-50 cursor-pointer hover:bg-blue-100' : 'bg-emerald-100 cursor-not-allowed') :
                             isProvisionalBooking ? 'bg-amber-100 hover:bg-amber-200' :
                             isSelected ? 'bg-blue-500 hover:bg-blue-600' :
                             isWeekend ? 'bg-amber-50/30 hover:bg-emerald-50' :
@@ -461,11 +469,11 @@ const CalendarView = ({
                       >
                         {booking && !canOverrideProvisional ? (
                           <div className={`w-full h-full rounded text-[9px] flex flex-col items-center justify-center px-1 truncate font-medium shadow-sm leading-tight
-                            ${isProvisionalBooking ? 'bg-amber-600 text-white' : 'bg-emerald-700 text-white'}`}>
+                            ${isProvisionalBooking ? 'bg-amber-600 text-white' : booking.member === currentUser ? 'bg-blue-600 text-white' : 'bg-emerald-700 text-white'}`}>
                             <div className="truncate w-full text-center">
-                              {isProvisionalBooking ? 'Provisional' : booking.member}
+                              {isProvisionalBooking ? 'Provisional' : (booking.isGuest && booking.guestName) ? booking.guestName : booking.member}
                             </div>
-                            {booking.isGuest && !isProvisionalBooking && <div className="opacity-80 font-normal">guest</div>}
+                            {booking.isGuest && !isProvisionalBooking && !booking.guestName && <div className="opacity-80 font-normal">guest</div>}
                           </div>
                         ) : isProvisionalBooking && canOverrideProvisional ? (
                           <div className="w-full h-full bg-amber-600 text-white rounded text-[9px] flex flex-col items-center justify-center px-1 truncate font-medium shadow-sm leading-tight">
@@ -503,8 +511,12 @@ const CalendarView = ({
             <span>Available</span>
           </div>
           <div className="flex items-center gap-2">
+            <span className="text-blue-700 text-[10px] font-bold">XX: name</span>
+            <span>My Bookings</span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="text-red-700 text-[10px] font-bold">XX: name</span>
-            <span>Booked</span>
+            <span>Other Bookings</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-stone-400 text-3xl font-bold">P</span>
@@ -1075,7 +1087,8 @@ const MultiRoomBookingDetails = ({
   setBookingMode,
   getRoomById,
   confirmMultiRoomBooking,
-  mealTimesConfig
+  mealTimesConfig,
+  currentUser
 }) => {
   // Group selected cells by room into continuous date ranges
   const groupSelectionsByRoom = () => {
@@ -1206,8 +1219,10 @@ const MultiRoomBookingDetails = ({
 
   const [roomBookings, setRoomBookings] = React.useState(() => {
     const initial = groupSelectionsByRoom();
-    return initial.map(rb => ({
+    return initial.map((rb, idx) => ({
       ...rb,
+      isGuest: idx !== 0, // First room is member-occupied by default
+      guestName: idx === 0 ? currentUser : '',
       dailyMeals: initializeDefaultMeals(rb.dates)
     }));
   });
@@ -1218,6 +1233,14 @@ const MultiRoomBookingDetails = ({
     const updated = [...roomBookings];
     updated[index] = { ...updated[index], [field]: value };
     setRoomBookings(updated);
+  };
+
+  const setMemberOccupied = (index) => {
+    setRoomBookings(roomBookings.map((rb, i) => ({
+      ...rb,
+      isGuest: i !== index,
+      guestName: i === index ? currentUser : (rb.isGuest ? rb.guestName : '')
+    })));
   };
 
   const updateMeal = (roomIndex, dateStr, mealField, value) => {
@@ -1305,30 +1328,42 @@ const MultiRoomBookingDetails = ({
               <span className="ml-2">({booking.dates.length} night{booking.dates.length !== 1 ? 's' : ''})</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  Guest Name / Description
-                </label>
+            <div className="mb-4">
+              <label className="flex items-center gap-2 mb-3">
                 <input
-                  type="text"
-                  value={booking.guestName}
-                  onChange={(e) => updateRoomBooking(roomIndex, 'guestName', e.target.value)}
-                  placeholder="e.g., Smith Family"
-                  className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600"
+                  type="checkbox"
+                  checked={!booking.isGuest}
+                  onChange={() => setMemberOccupied(roomIndex)}
+                  className="w-4 h-4"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  Number of Guests
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={booking.guests}
-                  onChange={(e) => updateRoomBooking(roomIndex, 'guests', parseInt(e.target.value))}
-                  className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600"
-                />
+                <span className="text-sm font-medium text-stone-700">Member occupied</span>
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                    Room Occupant(s)
+                  </label>
+                  <input
+                    type="text"
+                    value={booking.guestName}
+                    onChange={(e) => updateRoomBooking(roomIndex, 'guestName', e.target.value)}
+                    placeholder={booking.isGuest ? "e.g., Smith Family" : ""}
+                    disabled={!booking.isGuest}
+                    className={`w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600 ${!booking.isGuest ? 'bg-stone-100 text-stone-600' : ''}`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                    Number of Guests
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={booking.guests}
+                    onChange={(e) => updateRoomBooking(roomIndex, 'guests', parseInt(e.target.value))}
+                    className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1473,8 +1508,333 @@ const MultiRoomBookingDetails = ({
   );
 };
 
+// Edit Booking View
+const EditBookingDetails = ({ booking, onSave, onCancel, onDelete, currentUser }) => {
+  const getDatesInRange = (start, end) => {
+    const dates = [];
+    let current = new Date(start + 'T00:00:00');
+    const endDate = new Date(end + 'T00:00:00');
+    while (current < endDate) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  };
+
+  const isMealAvailable = (dateStr, mealType) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek === 0 && mealType === 'lunch') return false;
+    if (dayOfWeek === 0 && mealType === 'barSupper') return false;
+    if (dayOfWeek === 1) return false;
+    if (dayOfWeek === 2 && mealType === 'breakfast') return false;
+    return true;
+  };
+
+  const dates = getDatesInRange(booking.startDate, booking.endDate);
+  const nights = dates.length;
+
+  const [guests, setGuests] = React.useState(booking.guests);
+  const [isGuest, setIsGuest] = React.useState(booking.isGuest !== false);
+  const [guestName, setGuestName] = React.useState(booking.isGuest === false ? (booking.guestName || booking.member) : (booking.guestName || ''));
+  const [arrivalTime, setArrivalTime] = React.useState(booking.memberArrival || '');
+  const [dailyMeals, setDailyMeals] = React.useState(
+    JSON.parse(JSON.stringify(booking.dailyMeals || {}))
+  );
+
+  const handleMemberOccupiedToggle = () => {
+    if (isGuest) {
+      // Switching to member-occupied
+      setIsGuest(false);
+      setGuestName(currentUser || booking.member);
+    } else {
+      // Switching to guest room
+      setIsGuest(true);
+      setGuestName('');
+    }
+  };
+
+  const updateMeal = (dateStr, mealField, value) => {
+    setDailyMeals(prev => ({
+      ...prev,
+      [dateStr]: { ...prev[dateStr], [mealField]: value }
+    }));
+  };
+
+  const handleSave = () => {
+    onSave({
+      ...booking,
+      guests,
+      isGuest,
+      guestName,
+      memberArrival: arrivalTime,
+      guestArrival: arrivalTime,
+      dailyMeals
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-light text-emerald-900">Edit Booking</h2>
+        <button onClick={onCancel} className="text-sm text-stone-600 hover:text-emerald-700">
+          ← Back
+        </button>
+      </div>
+
+      {/* Room Info (read-only) */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 className="font-semibold text-emerald-900 mb-1">
+          {booking.roomName} ({booking.building})
+        </h3>
+        <div className="text-sm text-stone-600">
+          {new Date(booking.startDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} - {new Date(booking.endDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          <span className="ml-2">({nights} night{nights !== 1 ? 's' : ''})</span>
+        </div>
+        {booking.provisional && (
+          <span className="inline-block mt-2 px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded font-medium">
+            Provisional
+          </span>
+        )}
+        <p className="text-xs text-stone-500 mt-2">To change dates or room, cancel and rebook.</p>
+      </div>
+
+      {/* Arrival Time */}
+      <div className="bg-stone-50 rounded-lg p-6">
+        <h3 className="font-medium text-emerald-900 mb-4">Party Information</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">
+              Arrival Time
+            </label>
+            <select
+              value={arrivalTime}
+              onChange={(e) => setArrivalTime(e.target.value)}
+              className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600 bg-white"
+            >
+              <option value="">Select arrival time...</option>
+              <option value="07:00">7:00 AM</option>
+              <option value="07:30">7:30 AM</option>
+              <option value="08:00">8:00 AM</option>
+              <option value="08:30">8:30 AM</option>
+              <option value="09:00">9:00 AM</option>
+              <option value="09:30">9:30 AM</option>
+              <option value="10:00">10:00 AM</option>
+              <option value="10:30">10:30 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="11:30">11:30 AM</option>
+              <option value="12:00">12:00 PM</option>
+              <option value="12:30">12:30 PM</option>
+              <option value="13:00">1:00 PM</option>
+              <option value="13:30">1:30 PM</option>
+              <option value="14:00">2:00 PM</option>
+              <option value="14:30">2:30 PM</option>
+              <option value="15:00">3:00 PM</option>
+              <option value="15:30">3:30 PM</option>
+              <option value="16:00">4:00 PM</option>
+              <option value="16:30">4:30 PM</option>
+              <option value="17:00">5:00 PM</option>
+              <option value="17:30">5:30 PM</option>
+              <option value="18:00">6:00 PM</option>
+              <option value="18:30">6:30 PM</option>
+              <option value="19:00">7:00 PM</option>
+              <option value="19:30">7:30 PM</option>
+              <option value="20:00">8:00 PM</option>
+              <option value="20:30">8:30 PM</option>
+              <option value="21:00">9:00 PM</option>
+              <option value="21:30">9:30 PM</option>
+              <option value="22:00">10:00 PM</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">
+              Number of Guests
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={guests}
+              onChange={(e) => setGuests(parseInt(e.target.value) || 1)}
+              className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600"
+            />
+          </div>
+        </div>
+        <div className="mt-4">
+          <label className="flex items-center gap-2 mb-3">
+            <input
+              type="checkbox"
+              checked={!isGuest}
+              onChange={handleMemberOccupiedToggle}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium text-stone-700">Member occupied</span>
+          </label>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">
+              Room Occupant(s)
+            </label>
+            <input
+              type="text"
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+              placeholder={isGuest ? "e.g., Smith Family" : ""}
+              disabled={!isGuest}
+              className={`w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-600 ${!isGuest ? 'bg-stone-100 text-stone-600' : ''}`}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Meals by Day */}
+      <div className="border border-stone-300 rounded-lg p-6 bg-white">
+        <h3 className="font-medium text-emerald-900 mb-4">Meals</h3>
+        <div className="space-y-2">
+          {dates.map((date, dayIndex) => {
+            const dayData = dailyMeals[date] || {};
+            const isFirstDay = dayIndex === 0;
+            const isLastDay = dayIndex === dates.length - 1;
+            const dateObj = new Date(date + 'T00:00:00');
+            const dayOfWeek = dateObj.getDay();
+            const showNoMeals = dayOfWeek === 1;
+
+            return (
+              <div key={date} className="grid grid-cols-[140px_1fr] gap-4 border border-stone-200 rounded p-3 bg-stone-50">
+                <div className="flex flex-col justify-center">
+                  <div className="font-medium text-sm text-stone-800">
+                    {dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+                  {showNoMeals && (
+                    <div className="text-xs text-amber-700 mt-1">No meals served</div>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  {/* Breakfast - not shown on first day */}
+                  {!isFirstDay && (
+                    <div className={`flex items-center justify-between ${!isMealAvailable(date, 'breakfast') ? 'opacity-60' : ''}`}>
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={dayData.breakfast || false}
+                          disabled={!isMealAvailable(date, 'breakfast')}
+                          onChange={(e) => updateMeal(date, 'breakfast', e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <span className={`font-medium ${!isMealAvailable(date, 'breakfast') ? 'line-through' : ''}`}>
+                          Breakfast
+                        </span>
+                      </label>
+                      {dayData.breakfast && (
+                        <label className="flex items-center gap-1 text-xs text-stone-600">
+                          <input
+                            type="checkbox"
+                            checked={dayData.packedBreakfast || false}
+                            onChange={(e) => updateMeal(date, 'packedBreakfast', e.target.checked)}
+                            className="w-3 h-3"
+                          />
+                          <span>Packed</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Lunch */}
+                  {(isFirstDay || !isLastDay || dates.length > 1) && (
+                    <div className={`flex items-center justify-between ${!isMealAvailable(date, 'lunch') ? 'opacity-60' : ''}`}>
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={dayData.lunch || false}
+                          disabled={!isMealAvailable(date, 'lunch')}
+                          onChange={(e) => updateMeal(date, 'lunch', e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <span className={`font-medium ${!isMealAvailable(date, 'lunch') ? 'line-through' : ''}`}>
+                          Lunch
+                        </span>
+                      </label>
+                      {dayData.lunch && (
+                        <label className="flex items-center gap-1 text-xs text-stone-600">
+                          <input
+                            type="checkbox"
+                            checked={dayData.packedLunch || false}
+                            onChange={(e) => updateMeal(date, 'packedLunch', e.target.checked)}
+                            className="w-3 h-3"
+                          />
+                          <span>Packed</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Bar Supper - not shown on last day */}
+                  {!isLastDay && (
+                    <div className={`flex items-center justify-between ${!isMealAvailable(date, 'barSupper') ? 'opacity-60' : ''}`}>
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={dayData.barSupper || false}
+                          disabled={!isMealAvailable(date, 'barSupper')}
+                          onChange={(e) => updateMeal(date, 'barSupper', e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <span className={`font-medium ${!isMealAvailable(date, 'barSupper') ? 'line-through' : ''}`}>
+                          Bar Supper
+                        </span>
+                      </label>
+                      {dayData.barSupper && (
+                        <label className="flex items-center gap-1 text-xs text-stone-600">
+                          <input
+                            type="checkbox"
+                            checked={dayData.packedBarSupper || false}
+                            onChange={(e) => updateMeal(date, 'packedBarSupper', e.target.checked)}
+                            className="w-3 h-3"
+                          />
+                          <span>Packed</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-between">
+        <button
+          onClick={() => {
+            if (confirm('Are you sure you want to cancel this reservation?')) {
+              onDelete(booking.id);
+            }
+          }}
+          className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Cancel Booking
+        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="px-6 py-2 border border-stone-300 rounded-lg hover:bg-stone-50"
+          >
+            Discard Changes
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-6 py-2 bg-emerald-700 text-white rounded-lg hover:bg-emerald-800"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // My Reservations View
-const MyReservationsView = ({ bookings, currentUser, getRoomById, cancelBooking, setView }) => {
+const MyReservationsView = ({ bookings, currentUser, getRoomById, cancelBooking, setView, onEditBooking }) => {
   const userBookings = bookings.filter(b => b.member === currentUser);
 
   return (
@@ -1516,20 +1876,36 @@ const MyReservationsView = ({ bookings, currentUser, getRoomById, cancelBooking,
                       })}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm('Are you sure you want to cancel this reservation?')) {
-                        cancelBooking(booking.id);
-                      }
-                    }}
-                    className="text-red-600 hover:text-red-700 text-sm font-medium"
-                  >
-                    Cancel
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onEditBooking(booking)}
+                      className="text-emerald-700 hover:text-emerald-800 text-sm font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Are you sure you want to cancel this reservation?')) {
+                          cancelBooking(booking.id);
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-700 text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-stone-600">Occupant(s):</span>
+                    <span className="ml-2 font-medium">
+                      {booking.isGuest ? (booking.guestName || 'Guest') : booking.member}
+                      {booking.isGuest && <span className="ml-1 text-stone-400 text-xs">(guest room)</span>}
+                    </span>
+                  </div>
                   <div>
                     <span className="text-stone-600">Guests:</span>
                     <span className="ml-2 font-medium">{booking.guests}</span>
@@ -1732,37 +2108,30 @@ const ReportingView = ({ bookings }) => {
           const meals = booking.dailyMeals[dateStr];
           const guestCount = booking.guests || 1;
 
-          // Add member and their guests for each meal
-          if (meals.breakfast) {
-            mealDataByDate[dateStr].breakfast.push(booking.member);
-            for (let i = 1; i < guestCount; i++) {
-              mealDataByDate[dateStr].breakfast.push(`Guest of ${booking.member}`);
+          // For member-occupied rooms (isGuest=false): count the member + additional guests
+          // For guest rooms (isGuest=true): count only the guests (don't re-add the member)
+          const isMemberRoom = !booking.isGuest;
+          const occupantName = booking.guestName || booking.member;
+          const addMealEntries = (mealArray) => {
+            if (isMemberRoom) {
+              // Member's room: add the member, then their guests
+              mealArray.push(booking.member);
+              for (let i = 1; i < guestCount; i++) {
+                mealArray.push(`Guest of ${booking.member}`);
+              }
+            } else {
+              // Guest room: add each guest by the occupant name
+              for (let i = 0; i < guestCount; i++) {
+                mealArray.push(occupantName || `Guest of ${booking.member}`);
+              }
             }
-          }
-          if (meals.packedBreakfast) {
-            mealDataByDate[dateStr].packedBreakfast.push(booking.member);
-            for (let i = 1; i < guestCount; i++) {
-              mealDataByDate[dateStr].packedBreakfast.push(`Guest of ${booking.member}`);
-            }
-          }
-          if (meals.lunch) {
-            mealDataByDate[dateStr].lunch.push(booking.member);
-            for (let i = 1; i < guestCount; i++) {
-              mealDataByDate[dateStr].lunch.push(`Guest of ${booking.member}`);
-            }
-          }
-          if (meals.packedLunch) {
-            mealDataByDate[dateStr].packedLunch.push(booking.member);
-            for (let i = 1; i < guestCount; i++) {
-              mealDataByDate[dateStr].packedLunch.push(`Guest of ${booking.member}`);
-            }
-          }
-          if (meals.barSupper) {
-            mealDataByDate[dateStr].barSupper.push(booking.member);
-            for (let i = 1; i < guestCount; i++) {
-              mealDataByDate[dateStr].barSupper.push(`Guest of ${booking.member}`);
-            }
-          }
+          };
+
+          if (meals.breakfast) addMealEntries(mealDataByDate[dateStr].breakfast);
+          if (meals.packedBreakfast) addMealEntries(mealDataByDate[dateStr].packedBreakfast);
+          if (meals.lunch) addMealEntries(mealDataByDate[dateStr].lunch);
+          if (meals.packedLunch) addMealEntries(mealDataByDate[dateStr].packedLunch);
+          if (meals.barSupper) addMealEntries(mealDataByDate[dateStr].barSupper);
         }
       });
     }
@@ -1793,13 +2162,9 @@ const ReportingView = ({ bookings }) => {
             {hasMembers && (
               <button
                 onClick={() => toggleMeal(dateStr, mealType)}
-                className="p-1 hover:bg-stone-100 rounded transition-colors"
+                className="p-1 hover:bg-stone-100 rounded transition-colors text-stone-600"
               >
-                {isExpanded ? (
-                  <ChevronDownIcon className="w-4 h-4 text-stone-600" />
-                ) : (
-                  <ChevronRightIcon className="w-4 h-4 text-stone-600" />
-                )}
+                {isExpanded ? '▼' : '▶'}
               </button>
             )}
             <span className="text-stone-700 font-medium">{label}:</span>
@@ -1952,7 +2317,7 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             </div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
-              <span className="text-stone-400 text-xs">v4.4</span>
+              <span className="text-stone-400 text-xs">v4.5</span>
               <span className="text-amber-300 text-sm ml-2">({currentUser})</span>
             </div>
           </div>
@@ -2092,12 +2457,6 @@ function ClubReservationSystem() {
     // Lazy Lodge bookings - Markley has priority booking at beginning of February
     { "id": "b26", "member": "Markley", "building": "Lazy Lodge", "roomId": "ll1", "roomName": "Lazy Lodge #1", "startDate": "2026-02-01", "endDate": "2026-02-05", "guests": 3, "isGuest": false, "dailyMeals": { "2026-02-01": { "breakfast": false, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-02": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-03": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-04": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-05": { "breakfast": true, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "10:00", "guestArrival": "10:00", "provisional": false },
     { "id": "b27", "member": "Chris", "building": "Lazy Lodge", "roomId": "ll1", "roomName": "Lazy Lodge #1", "startDate": "2026-02-08", "endDate": "2026-02-12", "guests": 2, "isGuest": true, "dailyMeals": { "2026-02-08": { "breakfast": false, "lunch": false, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-09": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-10": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": true }, "2026-02-11": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-12": { "breakfast": true, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "15:00", "guestArrival": "15:00", "provisional": false },
-
-    { "id": "b28", "member": "David", "building": "Lazy Lodge", "roomId": "ll2", "roomName": "Lazy Lodge #2", "startDate": "2026-02-02", "endDate": "2026-02-05", "guests": 1, "isGuest": false, "dailyMeals": { "2026-02-02": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-03": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-04": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-05": { "breakfast": true, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "18:00", "guestArrival": "18:00", "provisional": false },
-    { "id": "b29", "member": "Kerry", "building": "Lazy Lodge", "roomId": "ll2", "roomName": "Lazy Lodge #2", "startDate": "2026-02-09", "endDate": "2026-02-13", "guests": 4, "isGuest": true, "dailyMeals": { "2026-02-09": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-10": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-11": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-12": { "breakfast": true, "lunch": true, "barSupper": true, "packedBreakfast": true, "packedLunch": true }, "2026-02-13": { "breakfast": true, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "12:00", "guestArrival": "12:00", "provisional": false },
-
-    // Provisional booking - Markley trying to book Lazy Lodge again (he already used it Feb 1-5)
-    { "id": "b30", "member": "Markley", "building": "Lazy Lodge", "roomId": "ll1", "roomName": "Lazy Lodge #1", "startDate": "2026-02-15", "endDate": "2026-02-18", "guests": 2, "isGuest": false, "dailyMeals": { "2026-02-15": { "breakfast": false, "lunch": false, "barSupper": true, "packedBreakfast": false, "packedLunch": false }, "2026-02-16": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false }, "2026-02-17": { "breakfast": false, "lunch": false, "barSupper": false, "packedBreakfast": false, "packedLunch": false } }, "memberArrival": "16:00", "guestArrival": "16:00", "provisional": true }
   ]);
   const [lazyLodgeHistory, setLazyLodgeHistory] = useState({
     2026: ['Markley']
@@ -2136,6 +2495,7 @@ function ClubReservationSystem() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportData, setExportData] = useState('');
+  const [editingBooking, setEditingBooking] = useState(null);
 
   // Helper functions
   const hasRentedLazyLodge = (member, year) => {
@@ -2328,7 +2688,7 @@ function ClubReservationSystem() {
         memberArrival: partyArrivalTime,
         guestArrival: partyArrivalTime,
         guestName: roomBooking.guestName,
-        isGuest: false,
+        isGuest: roomBooking.isGuest !== false,
         provisional: isProvisional
       };
 
@@ -2370,6 +2730,16 @@ function ClubReservationSystem() {
 
   const cancelBooking = (bookingId) => {
     setBookings(bookings.filter(b => b.id !== bookingId));
+  };
+
+  const handleEditBooking = (booking) => {
+    setEditingBooking(JSON.parse(JSON.stringify(booking)));
+    setSelectedCells([]);
+  };
+
+  const saveBookingEdits = (updatedBooking) => {
+    setBookings(bookings.map(b => b.id === updatedBooking.id ? updatedBooking : b));
+    setEditingBooking(null);
   };
 
   const downloadBookingsCSV = () => {
@@ -2450,13 +2820,25 @@ function ClubReservationSystem() {
       <Navigation
         currentUser={currentUser}
         view={view}
-        setView={setView}
+        setView={(v) => { setEditingBooking(null); setView(v); }}
         setCurrentUser={setCurrentUser}
         downloadCSV={downloadBookingsCSV}
         onLogoutClick={() => setShowLogoutConfirm(true)}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {editingBooking ? (
+          <EditBookingDetails
+            booking={editingBooking}
+            onSave={saveBookingEdits}
+            onCancel={() => setEditingBooking(null)}
+            onDelete={(bookingId) => {
+              cancelBooking(bookingId);
+              setEditingBooking(null);
+            }}
+            currentUser={currentUser}
+          />
+        ) : (<>
         {view === 'calendar' && bookingMode !== 'details' && <CalendarView
           currentDate={currentDate}
           calendarView={calendarView}
@@ -2473,6 +2855,7 @@ function ClubReservationSystem() {
           currentUser={currentUser}
           lazyLodgeHistory={lazyLodgeHistory}
           hasRentedLazyLodge={hasRentedLazyLodge}
+          onEditBooking={handleEditBooking}
         />}
         {view === 'calendar' && bookingMode === 'details' && <MultiRoomBookingDetails
           selectedCells={selectedCells}
@@ -2481,6 +2864,7 @@ function ClubReservationSystem() {
           getRoomById={getRoomById}
           confirmMultiRoomBooking={confirmMultiRoomBooking}
           mealTimesConfig={mealTimes}
+          currentUser={currentUser}
         />}
         {view === 'booking' && <BookingFlow
           bookingStep={bookingStep}
@@ -2505,6 +2889,7 @@ function ClubReservationSystem() {
           getRoomById={getRoomById}
           cancelBooking={cancelBooking}
           setView={setView}
+          onEditBooking={handleEditBooking}
         />}
         {view === 'admin' && currentUser === 'admin' && <AdminInventoryView
           maxRoomThreshold={maxRoomThreshold}
@@ -2520,6 +2905,7 @@ function ClubReservationSystem() {
         {view === 'reporting' && <ReportingView
           bookings={bookings}
         />}
+        </>)}
       </div>
 
       <ConfirmModal
