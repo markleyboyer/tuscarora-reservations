@@ -181,7 +181,7 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
           </div>
           <h1 className="text-3xl font-light text-emerald-900" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
           <p className="text-amber-700 mt-2 font-light">Member Portal</p>
-          <p className="text-stone-400 text-xs mt-1">v4.5</p>
+          <p className="text-stone-400 text-xs mt-1">v4.7</p>
         </div>
 
         <div className="space-y-4">
@@ -277,6 +277,82 @@ const CalendarView = ({
     return date.toISOString().split('T')[0];
   };
 
+  const exportCalendarToCSV = () => {
+    const headers = [
+      'Date', 'Day of Week', 'Member', 'Room', 'Building', 'Guests',
+      'Room Occupant', 'Arrival Time', 'Cottage Stay',
+      'Breakfast', 'Lunch', 'Dinner',
+      'Packed Breakfast', 'Packed Lunch', 'Packed Dinner'
+    ];
+
+    const rows = [];
+
+    // Get current month's date range
+    const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+    // Iterate through each booking
+    bookings.forEach(booking => {
+      const bookingStart = new Date(booking.startDate);
+      const bookingEnd = new Date(booking.endDate);
+
+      // Check if booking overlaps with current month
+      if (bookingStart <= endDate && bookingEnd >= startDate) {
+        // For each day of the booking
+        let currentDay = new Date(Math.max(bookingStart, startDate));
+        const lastDay = new Date(Math.min(bookingEnd, endDate));
+
+        while (currentDay < lastDay) {
+          const dateStr = formatDate(currentDay);
+          const dayOfWeek = currentDay.toLocaleDateString('en-US', { weekday: 'long' });
+          const formattedDate = currentDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+          const meals = booking.dailyMeals?.[dateStr] || {};
+
+          rows.push([
+            formattedDate,
+            dayOfWeek,
+            booking.member,
+            booking.roomName,
+            booking.building,
+            booking.guests || 0,
+            booking.guestName || '',
+            booking.memberArrival || '',
+            booking.stayingInCottage ? 'Yes' : 'No',
+            meals.breakfast ? 'Yes' : 'No',
+            meals.lunch ? 'Yes' : 'No',
+            meals.barSupper ? 'Yes' : 'No',
+            meals.packedBreakfast ? 'Yes' : 'No',
+            meals.packedLunch ? 'Yes' : 'No',
+            meals.packedBarSupper ? 'Yes' : 'No'
+          ]);
+
+          currentDay.setDate(currentDay.getDate() + 1);
+        }
+      }
+    });
+
+    // Sort by date
+    rows.sort((a, b) => new Date(a[0]) - new Date(b[0]));
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).replace(' ', '-');
+    link.setAttribute('download', `calendar-${monthName}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -293,6 +369,14 @@ const CalendarView = ({
         </div>
 
         <div className="flex items-center gap-4">
+          {calendarView === 'month' && (
+            <button
+              onClick={exportCalendarToCSV}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+            >
+              <span>Export to CSV</span>
+            </button>
+          )}
           <div className="flex gap-2">
             <button
               onClick={() => setCalendarView('month')}
@@ -2101,7 +2185,12 @@ const ReportingView = ({ bookings }) => {
               packedBreakfast: [],
               lunch: [],
               packedLunch: [],
-              barSupper: []
+              barSupper: [],
+              membersCountedBreakfast: new Set(),
+              membersCountedPackedBreakfast: new Set(),
+              membersCountedLunch: new Set(),
+              membersCountedPackedLunch: new Set(),
+              membersCountedBarSupper: new Set()
             };
           }
 
@@ -2111,27 +2200,36 @@ const ReportingView = ({ bookings }) => {
           // For member-occupied rooms (isGuest=false): count the member + additional guests
           // For guest rooms (isGuest=true): count only the guests (don't re-add the member)
           const isMemberRoom = !booking.isGuest;
-          const occupantName = booking.guestName || booking.member;
-          const addMealEntries = (mealArray) => {
+          const addMealEntries = (mealArray, membersCountedSet) => {
             if (isMemberRoom) {
-              // Member's room: add the member, then their guests
-              mealArray.push(booking.member);
-              for (let i = 1; i < guestCount; i++) {
-                mealArray.push(`Guest of ${booking.member}`);
+              // Member's room: add the member once (if not already counted), then their guests
+              if (!membersCountedSet.has(booking.member)) {
+                mealArray.push(booking.member);
+                membersCountedSet.add(booking.member);
+                // Add additional guests for this booking
+                for (let i = 1; i < guestCount; i++) {
+                  mealArray.push(`Guest of ${booking.member}`);
+                }
+              } else {
+                // Member already counted from another room, just add all guests
+                for (let i = 0; i < guestCount; i++) {
+                  mealArray.push(`Guest of ${booking.member}`);
+                }
               }
             } else {
-              // Guest room: add each guest by the occupant name
+              // Guest room: add each guest by the occupant name (or "Guest of member" if no name)
+              const guestLabel = booking.guestName || `Guest of ${booking.member}`;
               for (let i = 0; i < guestCount; i++) {
-                mealArray.push(occupantName || `Guest of ${booking.member}`);
+                mealArray.push(guestLabel);
               }
             }
           };
 
-          if (meals.breakfast) addMealEntries(mealDataByDate[dateStr].breakfast);
-          if (meals.packedBreakfast) addMealEntries(mealDataByDate[dateStr].packedBreakfast);
-          if (meals.lunch) addMealEntries(mealDataByDate[dateStr].lunch);
-          if (meals.packedLunch) addMealEntries(mealDataByDate[dateStr].packedLunch);
-          if (meals.barSupper) addMealEntries(mealDataByDate[dateStr].barSupper);
+          if (meals.breakfast) addMealEntries(mealDataByDate[dateStr].breakfast, mealDataByDate[dateStr].membersCountedBreakfast);
+          if (meals.packedBreakfast) addMealEntries(mealDataByDate[dateStr].packedBreakfast, mealDataByDate[dateStr].membersCountedPackedBreakfast);
+          if (meals.lunch) addMealEntries(mealDataByDate[dateStr].lunch, mealDataByDate[dateStr].membersCountedLunch);
+          if (meals.packedLunch) addMealEntries(mealDataByDate[dateStr].packedLunch, mealDataByDate[dateStr].membersCountedPackedLunch);
+          if (meals.barSupper) addMealEntries(mealDataByDate[dateStr].barSupper, mealDataByDate[dateStr].membersCountedBarSupper);
         }
       });
     }
@@ -2209,10 +2307,59 @@ const ReportingView = ({ bookings }) => {
     );
   };
 
+  const exportMealsToCSV = () => {
+    const headers = ['Date', 'Day of Week', 'Breakfast', 'Breakfast (Packed)', 'Lunch', 'Lunch (Packed)', 'Dinner', 'Breakfast Names', 'Lunch Names', 'Dinner Names'];
+    const rows = sortedDates.map(dateStr => {
+      const date = new Date(dateStr);
+      const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const data = mealDataByDate[dateStr];
+
+      return [
+        formattedDate,
+        dayOfWeek,
+        data.breakfast.length,
+        data.packedBreakfast.length,
+        data.lunch.length,
+        data.packedLunch.length,
+        data.barSupper.length,
+        data.breakfast.join('; '),
+        data.lunch.join('; '),
+        data.barSupper.join('; ')
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `meal-report-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-light text-stone-800">Meal Count Report</h2>
-      <p className="text-sm text-stone-600">Showing all future bookings from today forward. Click arrows to see member names.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-light text-stone-800">Meal Count Report</h2>
+          <p className="text-sm text-stone-600">Showing all future bookings from today forward. Click arrows to see member names.</p>
+        </div>
+        <button
+          onClick={exportMealsToCSV}
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+        >
+          <span>Export to CSV</span>
+        </button>
+      </div>
 
       {sortedDates.length === 0 ? (
         <div className="text-center py-12">
@@ -2317,7 +2464,7 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
             </div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
-              <span className="text-stone-400 text-xs">v4.5</span>
+              <span className="text-stone-400 text-xs">v4.7</span>
               <span className="text-amber-300 text-sm ml-2">({currentUser})</span>
             </div>
           </div>
