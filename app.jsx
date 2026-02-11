@@ -172,16 +172,17 @@ const LoginView = ({ username, setUsername, handleLogin }) => {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-stone-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+          <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center bg-transparent">
             <img
               src="logo.png"
               alt="Tuscarora Club Logo"
               className="w-full h-full object-contain"
+              style={{ backgroundColor: 'transparent' }}
             />
           </div>
           <h1 className="text-3xl font-light text-emerald-900" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
           <p className="text-amber-700 mt-2 font-light">Member Portal</p>
-          <p className="text-stone-400 text-xs mt-1">v4.7</p>
+          <p className="text-stone-400 text-xs mt-1">v4.9</p>
         </div>
 
         <div className="space-y-4">
@@ -520,6 +521,7 @@ const CalendarView = ({
                     const showProvisionalIndicator = !booking && isLazyLodge && userHasUsedLL;
                     const isProvisionalBooking = booking && booking.provisional;
                     const canOverrideProvisional = isProvisionalBooking && isLazyLodge && !userHasUsedLL;
+                    const willBeProvisional = isSelected && isLazyLodge && userHasUsedLL;
 
                     const isOwnBooking = booking && !booking.provisional && (booking.member === currentUser || currentUser === 'admin');
 
@@ -546,6 +548,7 @@ const CalendarView = ({
                         className={`h-12 transition-colors cursor-pointer flex items-center justify-center p-0.5 border-r border-b border-stone-200
                           ${booking && !canOverrideProvisional ? (isOwnBooking ? 'bg-blue-50 cursor-pointer hover:bg-blue-100' : 'bg-emerald-100 cursor-not-allowed') :
                             isProvisionalBooking ? 'bg-amber-100 hover:bg-amber-200' :
+                            willBeProvisional ? 'bg-amber-500 hover:bg-amber-600' :
                             isSelected ? 'bg-blue-500 hover:bg-blue-600' :
                             isWeekend ? 'bg-amber-50/30 hover:bg-emerald-50' :
                             'bg-white hover:bg-emerald-50'}
@@ -563,6 +566,11 @@ const CalendarView = ({
                           <div className="w-full h-full bg-amber-600 text-white rounded text-[9px] flex flex-col items-center justify-center px-1 truncate font-medium shadow-sm leading-tight">
                             <div className="truncate w-full text-center">Provisional</div>
                             <div className="text-[8px] opacity-90">(click to override)</div>
+                          </div>
+                        ) : willBeProvisional ? (
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <CheckIcon className="w-4 h-4 text-white" />
+                            <div className="text-[8px] text-white font-medium">Provisional</div>
                           </div>
                         ) : isSelected ? (
                           <CheckIcon className="w-5 h-5 text-white" />
@@ -2455,17 +2463,17 @@ const Navigation = ({ currentUser, view, setView, setCurrentUser, downloadCSV, o
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 flex items-center justify-center">
-              <svg viewBox="0 0 200 200" className="w-full h-full">
-                <circle cx="100" cy="100" r="95" fill="none" stroke="#D97706" strokeWidth="3" opacity="0.8" />
-                <circle cx="100" cy="100" r="88" fill="none" stroke="#D97706" strokeWidth="1.5" opacity="0.6" />
-                <text x="100" y="115" textAnchor="middle" fontSize="60" fontFamily="Georgia, serif" fill="#FCD34D" fontWeight="300">TC</text>
-              </svg>
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img
+                src="logo.png"
+                alt="Tuscarora Club Logo"
+                className="w-full h-full object-contain"
+                style={{ backgroundColor: 'transparent' }}
+              />
             </div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-light text-amber-200" style={{ fontFamily: 'Georgia, serif' }}>The Tuscarora Club</h1>
-              <span className="text-stone-400 text-xs">v4.7</span>
-              <span className="text-amber-300 text-sm ml-2">({currentUser})</span>
+              <span className="text-stone-400 text-xs">v4.9</span>
             </div>
           </div>
 
