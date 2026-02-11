@@ -1,6 +1,6 @@
 # The Tuscarora Club Reservation System - Specification
 
-**Version:** 4.5
+**Version:** 4.9
 **Last Updated:** February 2026
 
 ## Overview
@@ -54,6 +54,7 @@ The top navigation bar provides access to:
 - Booked rooms shown in red; available in grey
 - Guest bookings shown with "(G)" suffix
 - Today highlighted with emerald border
+- **CSV Export button:** Export all bookings for the displayed month with daily breakdown of rooms, meals, and occupants
 - **Clicking any day switches to Week View** centered on that date
 
 ### Week View (3-Week Grid)
@@ -76,7 +77,8 @@ The top navigation bar provides access to:
 - **Booked (own, confirmed):** Blue chip showing member name; **clickable** — opens Edit Booking view
 - **Booked (other member, confirmed):** Emerald chip showing member name; not clickable
 - **Booked (provisional):** Amber chip showing "Provisional" (anonymous - no member name)
-- **Selected:** Blue with white checkmark
+- **Selected (confirmed):** Blue background with white checkmark
+- **Selected (provisional):** Amber/orange background with checkmark and "Provisional" label (for Lazy Lodge when user has no priority)
 - **Provisional indicator (P):** Large grey "P" shown in available Lazy Lodge cells when the current user has already used their annual Lazy Lodge allocation
 - **Provisional override:** Amber chip with "(click to override)" text, shown to members who have priority
 
@@ -191,9 +193,11 @@ Each member gets one Lazy Lodge stay per calendar year (Jan 1 - Dec 31). Both La
 - Grouped by date, showing: Breakfast count, Lunch count, Dinner (Bar Supper) count
 - Packed meal counts shown in amber
 - **Expandable details:** Click arrow to reveal individual member names for each meal
+- **CSV Export button:** Export meal data to CSV format with columns for date, day of week, meal counts, packed counts, and detailed member name lists
 - **Meal counting uses the `isGuest` flag** to avoid double-counting members:
-  - **Member-occupied rooms** (`isGuest: false`): counts the member by name, plus additional guests as "Guest of [member]"
-  - **Guest rooms** (`isGuest: true`): counts only the guests by the Room Occupant(s) name — the member is NOT re-counted
+  - **Member-occupied rooms** (`isGuest: false`): counts the member by name once, plus additional guests as "Guest of [member]"
+  - **Guest rooms** (`isGuest: true`): counts only the guests by the Room Occupant(s) name (or "Guest of [member]" if no name provided) — the member is NOT re-counted
+  - Members with multiple bookings on same date are counted only once by name
 
 ## Admin View (admin user only)
 
@@ -225,7 +229,8 @@ In the multi-room booking form, a **"Member occupied" checkbox** controls which 
 
 - **Color palette:** Emerald (primary), blue (current user's bookings), amber (accents/warnings/weekends/provisional), stone (neutrals), red (other members' bookings in month view)
 - **Typography:** Georgia serif for club name; system sans-serif for everything else
-- **Logo:** `logo.png` (Tuscarora Club seal) displayed on login screen; TC monogram SVG in header
+- **Logo:** `logo.png` (Tuscarora Club seal) displayed on login screen and in main navigation header (left of club name)
+- **User indicator:** Username displayed in upper right corner of navigation
 - **Styling:** Tailwind CSS utility classes throughout
 - **Icons:** Lucide icons via CDN (with a React shim component), except navigation arrows which use Unicode characters
 
