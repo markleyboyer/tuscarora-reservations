@@ -46,6 +46,10 @@ Simply open `index.html` in a web browser. No build process or server required!
 
 This site is designed to work seamlessly with GitHub Pages. Just push to your repository and enable GitHub Pages in the repository settings.
 
+**📖 Need to make this repository public?** See [MAKING-REPO-PUBLIC.md](MAKING-REPO-PUBLIC.md) for step-by-step instructions.
+
+> **Note**: This is a demonstration application with hardcoded demo data. No real member information or sensitive data is stored in this repository.
+
 ---
 
 **The Tuscarora Club** - Est. 1901, Millbrook, New York

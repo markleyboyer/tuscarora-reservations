@@ -1,5 +1,7 @@
 # GitHub Pages Deployment Guide
 
+> **📖 Already have a repository but need to make it public?** See [MAKING-REPO-PUBLIC.md](MAKING-REPO-PUBLIC.md) for instructions on changing repository visibility.
+
 ## Step 1: Create a New GitHub Repository
 
 1. Go to [GitHub](https://github.com) and sign in
